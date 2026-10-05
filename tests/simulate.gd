@@ -54,7 +54,7 @@ func _init() -> void:
 	# 3) 批量模拟
 	var encounters: Array = (db["raw"]["enemies"] as Dictionary).get("items", [])
 	print("\n[批量模拟] 每关 %d 场" % _runs)
-	print("%-14s %-8s %8s %8s %8s %8s" % ["关卡", "难度", "我方胜", "敌方胜", "平局", "胜率"])
+	print(_row("关卡", "难度", "我方胜", "敌方胜", "平局", "胜率"))
 	print("-".repeat(56))
 
 	for enc in encounters:
@@ -65,21 +65,26 @@ func _init() -> void:
 			tally[outcome] = int(tally.get(outcome, 0)) + 1
 		var total := maxi(_runs, 1)
 		var rate: float = float(tally["ally_win"]) * 100.0 / float(total)
-		print("%-14s %-8s %8d %8d %8d %7.1f%%"
-			% [String(e.get("name", "")), String(e.get("difficulty", "")),
-			   tally["ally_win"], tally["enemy_win"], tally["draw"], rate])
+		print(_row(
+			str(e.get("name", "")), str(e.get("difficulty", "")),
+			str(tally["ally_win"]), str(tally["enemy_win"]),
+			str(tally["draw"]), "%.1f%%" % rate))
 
 	print("\n提示：胜率若长期 <20% 或 >90%，说明该关数值需要调整（改 data/*.json，不要改代码）。")
 	quit(0)
 
 
 func _run_once(db: Dictionary, enc: Dictionary, seed_value: int) -> String:
-	var ally := [
-		{"card_id": "beast_001", "level": 5},
-		{"card_id": "beast_002", "level": 5},
-		{"card_id": "beast_003", "level": 5},
-	]
 	var enemy: Array = (enc.get("units", []) as Array).duplicate(true)
+
+	# 我方等级 = 敌方平均等级 + (难度-1)
+	# 理由：玩家打 Boss 通常会高于推荐等级；若用严格同级，测的是"越级挑战"而非平衡性
+	var ally_level := _avg_enemy_level(enemy) + int(enc.get("difficulty", 1)) - 1
+	var ally := [
+		{"card_id": "beast_001", "level": ally_level},
+		{"card_id": "beast_002", "level": ally_level},
+		{"card_id": "beast_003", "level": ally_level},
+	]
 	var library := DECK_CORE.duplicate()
 	library.append_array(DECK_CORE.duplicate())  # 8 x 2 = 16 张
 
@@ -103,6 +108,15 @@ func _run_once(db: Dictionary, enc: Dictionary, seed_value: int) -> String:
 	return outcome
 
 
+func _avg_enemy_level(enemy: Array) -> int:
+	if enemy.is_empty():
+		return 1
+	var total := 0
+	for e in enemy:
+		total += int((e as Dictionary).get("level", 1))
+	return maxi(total / enemy.size(), 1)
+
+
 func _verify_determinism(db: Dictionary) -> void:
 	var encounters: Array = (db["raw"]["enemies"] as Dictionary).get("items", [])
 	if encounters.is_empty():
@@ -115,6 +129,12 @@ func _verify_determinism(db: Dictionary) -> void:
 		print("[确定性] 通过：seed=42 两次运行结果一致（%s）" % a)
 	else:
 		print("[确定性] ✗ 失败：seed=42 两次结果不同（%s vs %s）" % [a, b])
+
+
+## Godot 的 % 运算符不支持 "%-14s" 这类左对齐宽度语法，用 lpad/rpad 手工对齐
+func _row(a: String, b: String, c: String, d: String, e: String, f: String) -> String:
+	return "%s %s %s %s %s %s" % [
+		a.rpad(14), b.rpad(8), c.rpad(8), d.rpad(8), e.rpad(8), f.rpad(8)]
 
 
 func _arg_int(flag: String, default_value: int) -> int:

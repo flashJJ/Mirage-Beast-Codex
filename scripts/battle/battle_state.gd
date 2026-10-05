@@ -25,6 +25,8 @@ var turn_index: int = 0
 var outcome: String = "ongoing"
 
 var rng: BattleRNG
+## 从手牌召唤时的单位等级（取该方初始队伍的平均等级，避免 Boss 召唤出 Lv1 杂兵）
+var summon_level: Array = [1, 1]
 var chart: Dictionary = {}
 var cards_db: Dictionary = {}
 var skills_db: Dictionary = {}
@@ -53,6 +55,7 @@ func setup(
 
 	_spawn_side(ally_entries, Side.ALLY)
 	_spawn_side(enemy_entries, Side.ENEMY)
+	summon_level = [_avg_level(ally_entries), _avg_level(enemy_entries)]
 
 	libraries = [ally_library.duplicate(), enemy_library.duplicate()]
 	hands = [[], []]
@@ -193,12 +196,12 @@ func apply_damage(target_index: int, amount: int, source_index: int) -> int:
 
 	u["hp"] = int(u.get("hp", 0)) - remaining
 	log_line("%s 受到 %d 点伤害（护盾吸收 %d），剩余 HP %d"
-		% [String(u.get("name", "?")), amount, amount - remaining, maxi(int(u.get("hp", 0)), 0)])
+		% [label(target_index), amount, amount - remaining, maxi(int(u.get("hp", 0)), 0)])
 
 	if int(u.get("hp", 0)) <= 0:
 		u["hp"] = 0
 		u["alive"] = false
-		log_line("%s 倒下了" % String(u.get("name", "?")))
+		log_line("%s 倒下了" % label(target_index))
 
 	check_outcome()
 	return remaining
@@ -215,7 +218,7 @@ func apply_heal(target_index: int, amount: int) -> int:
 	var healed := mini(amount, max_hp - hp)
 	u["hp"] = hp + healed
 	if healed > 0:
-		log_line("%s 恢复 %d 点生命" % [String(u.get("name", "?")), healed])
+		log_line("%s 恢复 %d 点生命" % [label(target_index), healed])
 	return healed
 
 
@@ -252,6 +255,24 @@ func purify(target_index: int, _count: int) -> void:
 
 func log_line(text: String) -> void:
 	battle_log.append("T%d | %s" % [turn_index, text])
+
+
+## 带阵营前缀的单位名，避免敌我同名幻兽在日志里无法区分
+func label(index: int) -> String:
+	if index < 0 or index >= units.size():
+		return "?"
+	var u: Dictionary = units[index]
+	var prefix := "[我]" if int(u.get("side", 0)) == Side.ALLY else "[敌]"
+	return "%s%s" % [prefix, String(u.get("name", "?"))]
+
+
+func _avg_level(entries: Array) -> int:
+	if entries.is_empty():
+		return 1
+	var total := 0
+	for e in entries:
+		total += int((e as Dictionary).get("level", 1))
+	return maxi(total / entries.size(), 1)
 
 
 func side_name(side: int) -> String:

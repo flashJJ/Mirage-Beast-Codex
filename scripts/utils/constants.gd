@@ -22,6 +22,7 @@ const SLOT_COUNT        := 6      # 站位槽位总数（前排 0-2 / 后排 3-5
 const MAX_TURNS         := 15     # 回合上限（超时判定）
 const FATIGUE_DAMAGE    := 2      # 牌库耗尽后每回合抽牌受到的伤害
 const MAX_ACTIONS_TURN  := 8      # 每回合最大行动数（防死循环）
+const BASIC_ATTACK_POWER := 1000  # 普攻倍率 100% 攻击力（无主动技能单位的兜底输出）
 
 # ── 站位修正（千分比）────────────────────────────
 const BACK_ROW_DAMAGE_TAKEN := 750   # 后排受到伤害 x 0.75

@@ -34,8 +34,8 @@
     {
       "id": "sk_b005_s1", "name": "熔岩反制", "cost": 0, "trigger": "on_damaged",
       "tags": ["counter"], "target": { "side": "enemy", "select": "random", "count": 1 },
-      "effects": [ { "op": "DAMAGE", "power": 400, "scale": "atk" } ],
-      "desc": "受到攻击时反弹 40% 攻击力伤害。"
+      "effects": [ { "op": "DAMAGE", "power": 220, "scale": "atk" } ],
+      "desc": "受到攻击时反弹 22% 攻击力伤害。"
     },
     {
       "id": "sk_b006_s1", "name": "光羽洞察", "cost": 1, "trigger": "active",

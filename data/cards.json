@@ -45,7 +45,7 @@
       "id": "beast_005", "name": "熔岩獠牙", "type": "beast", "rarity": "SR",
       "element": "fire", "faction": "crag", "cost": 4,
       "base":   { "atk": 18, "hp": 34, "def": 6, "spd": 10 },
-      "growth": { "atk": 16, "hp": 30, "def": 5, "spd": 6  },
+      "growth": { "atk": 13, "hp": 30, "def": 5, "spd": 6  },
       "tags": ["counter"], "skills": ["sk_b005_s1"],
       "persona": { "traits": ["暴躁", "记仇"], "tone": "强硬", "catchphrase": "打我？你试试。" },
       "assets": { "sprite": "res://assets/sprites/beasts/beast_005.png", "portrait": "res://assets/portraits/beast_005.png" },

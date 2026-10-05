@@ -21,6 +21,9 @@ func setup(battle_state: BattleState, ally_ai: String = "easy", enemy_ai: String
 	state = battle_state
 	ai_levels = [ally_ai, enemy_ai]
 	phase = Phase.START
+	# 初始上场的单位也要触发 on_play（否则「进场护盾」类技能在开局阵容上永远不生效）
+	for i in state.units.size():
+		EffectSystem.on_play(state, i)
 
 
 ## 跑完整场战斗，返回 outcome 字符串
@@ -121,6 +124,8 @@ func _execute(side: int, act: Dictionary) -> bool:
 			return play_card(side, int(act.get("hand_index", -1)), int(act.get("target", -1)))
 		"skill":
 			return use_skill(int(act.get("unit_index", -1)), String(act.get("skill_id", "")), int(act.get("target", -1)))
+		"basic":
+			return basic_attack(int(act.get("unit_index", -1)), int(act.get("target", -1)))
 		_:
 			return false
 
@@ -145,11 +150,13 @@ func play_card(side: int, hand_index: int, target: int) -> bool:
 			state.log_line("%s 场上已满，%s 被弃置" % [_side_name(side), String(card.get("name", card_id))])
 			return true
 		var slot := state.board_count(side)
-		var unit := state.make_unit(card_id, 1, side, slot)
+		var lv := int(state.summon_level[side])
+		var unit := state.make_unit(card_id, lv, side, slot)
 		if unit.is_empty():
 			return true
 		state.units.append(unit)
-		state.log_line("%s 召唤 %s（Lv1）" % [_side_name(side), String(unit.get("name", card_id))])
+		state.log_line("%s 召唤 %s（Lv%d）"
+			% [_side_name(side), String(unit.get("name", card_id)), lv])
 		EffectSystem.on_play(state, state.units.size() - 1)
 	else:
 		# 秘术卡：以本方攻击力最高的存活单位作为施法者
@@ -182,8 +189,23 @@ func use_skill(unit_index: int, skill_id: String, target: int) -> bool:
 
 	state.energy[side] -= cost
 	u["skill_used_this_turn"] = true
-	state.log_line("%s 使用 %s" % [String(u.get("name", "?")), String(skill.get("name", skill_id))])
+	state.log_line("%s 使用 %s" % [state.label(unit_index), String(skill.get("name", skill_id))])
 	EffectSystem.resolve(state, unit_index, skill, target)
+	return true
+
+
+## 普攻：没有可用主动技能的单位仍应有输出，否则「只有辅助技能」的幻兽等于站桩挨打
+func basic_attack(unit_index: int, target: int) -> bool:
+	if unit_index < 0 or unit_index >= state.units.size():
+		return false
+	var u: Dictionary = state.units[unit_index]
+	if not bool(u.get("alive", false)):
+		return false
+	if bool(u.get("skill_used_this_turn", false)):
+		return false
+	u["skill_used_this_turn"] = true
+	state.log_line("%s 普攻" % state.label(unit_index))
+	EffectSystem.deal_damage(state, unit_index, target, C.BASIC_ATTACK_POWER, 0)
 	return true
 
 

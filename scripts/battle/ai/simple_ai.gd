@@ -63,6 +63,13 @@ static func decide(state: BattleState, side: int, level: String = "easy") -> Dic
 				continue
 			return {"type": "skill", "unit_index": int(i), "skill_id": String(skid), "target": target}
 
+	# 5) 没有可用主动技能的单位执行普攻，保证不会站桩
+	for i2 in order:
+		var u2: Dictionary = state.units[i2]
+		if bool(u2.get("skill_used_this_turn", false)):
+			continue
+		return {"type": "basic", "unit_index": int(i2), "target": lowest_enemy}
+
 	return {"type": "pass"}
 
 

@@ -13,7 +13,8 @@
       "id": "enc_tut_02", "name": "裂谷巡逻", "difficulty": 2, "ai_level": "easy",
       "units": [
         { "card_id": "beast_001", "level": 6, "slot": 0 },
-        { "card_id": "beast_007", "level": 5, "slot": 1 }
+        { "card_id": "beast_007", "level": 5, "slot": 1 },
+        { "card_id": "beast_003", "level": 5, "slot": 2 }
       ],
       "rewards": { "exp": 240, "coin": 150, "drops": [{ "item": "mat_break_1", "count": 2 }] }
     },

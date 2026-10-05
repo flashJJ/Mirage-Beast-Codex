@@ -2,34 +2,124 @@
   "schema": "encounter/v1",
   "items": [
     {
-      "zone": 1, "area": "grass",
+      "zone": 1,
+      "area": "grass",
       "pool": [
-        { "card_id": "beast_001", "weight": 300, "level": [2, 6] },
-        { "card_id": "beast_002", "weight": 250, "level": [2, 6] },
-        { "card_id": "beast_003", "weight": 300, "level": [2, 6] },
-        { "card_id": "beast_004", "weight": 150, "level": [4, 8] }
+        {
+          "card_id": "beast_001",
+          "weight": 300,
+          "level": [
+            2,
+            6
+          ]
+        },
+        {
+          "card_id": "beast_002",
+          "weight": 250,
+          "level": [
+            2,
+            6
+          ]
+        },
+        {
+          "card_id": "beast_003",
+          "weight": 300,
+          "level": [
+            2,
+            6
+          ]
+        },
+        {
+          "card_id": "beast_004",
+          "weight": 150,
+          "level": [
+            4,
+            8
+          ]
+        }
       ],
-      "encounter_rate_per_1000_steps": 45
+      "encounter_rate_per_1000_steps": 45,
+      "id": "enc_z1_grass"
     },
     {
-      "zone": 2, "area": "crag",
+      "zone": 2,
+      "area": "crag",
       "pool": [
-        { "card_id": "beast_005", "weight": 300, "level": [8, 14] },
-        { "card_id": "beast_001", "weight": 250, "level": [8, 14] },
-        { "card_id": "beast_007", "weight": 250, "level": [8, 14] },
-        { "card_id": "beast_004", "weight": 200, "level": [8, 14] }
+        {
+          "card_id": "beast_005",
+          "weight": 300,
+          "level": [
+            8,
+            14
+          ]
+        },
+        {
+          "card_id": "beast_001",
+          "weight": 250,
+          "level": [
+            8,
+            14
+          ]
+        },
+        {
+          "card_id": "beast_007",
+          "weight": 250,
+          "level": [
+            8,
+            14
+          ]
+        },
+        {
+          "card_id": "beast_004",
+          "weight": 200,
+          "level": [
+            8,
+            14
+          ]
+        }
       ],
-      "encounter_rate_per_1000_steps": 50
+      "encounter_rate_per_1000_steps": 50,
+      "id": "enc_z2_crag"
     },
     {
-      "zone": 3, "area": "relic",
+      "zone": 3,
+      "area": "relic",
       "pool": [
-        { "card_id": "beast_006", "weight": 300, "level": [15, 22] },
-        { "card_id": "beast_007", "weight": 350, "level": [15, 22] },
-        { "card_id": "beast_008", "weight": 50,  "level": [18, 25] },
-        { "card_id": "beast_005", "weight": 300, "level": [15, 22] }
+        {
+          "card_id": "beast_006",
+          "weight": 300,
+          "level": [
+            15,
+            22
+          ]
+        },
+        {
+          "card_id": "beast_007",
+          "weight": 350,
+          "level": [
+            15,
+            22
+          ]
+        },
+        {
+          "card_id": "beast_008",
+          "weight": 50,
+          "level": [
+            18,
+            25
+          ]
+        },
+        {
+          "card_id": "beast_005",
+          "weight": 300,
+          "level": [
+            15,
+            22
+          ]
+        }
       ],
-      "encounter_rate_per_1000_steps": 55
+      "encounter_rate_per_1000_steps": 55,
+      "id": "enc_z3_relic"
     }
   ]
 }
