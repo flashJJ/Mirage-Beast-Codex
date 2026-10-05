@@ -1,0 +1,28 @@
+# Godot 4
+.godot/
+*.tmp
+export_presets.cfg
+.mono/
+data_*/
+mono_crash.*.json
+
+# 导出产物
+build/
+dist/
+*.exe
+*.pck
+*.zip
+
+# 本地缓存（AI 模块运行时生成）
+user://
+
+# 系统
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+*~

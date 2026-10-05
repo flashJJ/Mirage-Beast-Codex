@@ -1,0 +1,74 @@
+{
+  "schema": "skill/v1",
+  "items": [
+    {
+      "id": "sk_b001_s1", "name": "双尾连击", "cost": 1, "trigger": "active",
+      "tags": ["combo"], "target": { "side": "enemy", "select": "lowest_hp", "count": 1 },
+      "effects": [
+        { "op": "DAMAGE", "power": 1100, "scale": "atk" },
+        { "op": "DAMAGE", "power": 600,  "scale": "atk", "repeat": 1 }
+      ],
+      "desc": "造成 110% 攻击力伤害，追加一次 60% 攻击力伤害。"
+    },
+    {
+      "id": "sk_b002_s1", "name": "潮汐护盾", "cost": 1, "trigger": "on_play",
+      "tags": ["shield"], "target": { "side": "ally", "select": "all", "count": 3 },
+      "effects": [ { "op": "SHIELD", "power": 800, "scale": "def", "duration": 2 } ],
+      "desc": "进场时为全部友军附加 80% 防御力的护盾，持续 2 回合。"
+    },
+    {
+      "id": "sk_b003_s1", "name": "木灵回春", "cost": 1, "trigger": "active",
+      "tags": ["heal"], "target": { "side": "ally", "select": "lowest_hp", "count": 1 },
+      "effects": [ { "op": "HEAL", "power": 1200, "scale": "atk" } ],
+      "desc": "为血量最低的友军恢复 120% 攻击力的生命。"
+    },
+    {
+      "id": "sk_b004_s1", "name": "藤蔓嘲讽", "cost": 2, "trigger": "active",
+      "tags": ["taunt"], "target": { "side": "enemy", "select": "all", "count": 3 },
+      "effects": [
+        { "op": "TAUNT", "duration": 2 },
+        { "op": "DEBUFF", "stat": "atk", "power": 850, "duration": 2 }
+      ],
+      "desc": "嘲讽敌方全体 2 回合，并使其攻击力降低 15%。"
+    },
+    {
+      "id": "sk_b005_s1", "name": "熔岩反制", "cost": 0, "trigger": "on_damaged",
+      "tags": ["counter"], "target": { "side": "enemy", "select": "random", "count": 1 },
+      "effects": [ { "op": "DAMAGE", "power": 400, "scale": "atk" } ],
+      "desc": "受到攻击时反弹 40% 攻击力伤害。"
+    },
+    {
+      "id": "sk_b006_s1", "name": "光羽洞察", "cost": 1, "trigger": "active",
+      "tags": ["sense"], "target": { "side": "ally", "select": "self", "count": 1 },
+      "effects": [ { "op": "DRAW", "count": 1 }, { "op": "ENERGY", "amount": 1 } ],
+      "desc": "抽 1 张牌，并获得 1 点费用。"
+    },
+    {
+      "id": "sk_b007_s1", "name": "影袭", "cost": 1, "trigger": "active",
+      "tags": ["pierce"], "target": { "side": "enemy", "select": "lowest_hp", "count": 1 },
+      "effects": [ { "op": "DAMAGE", "power": 1300, "scale": "atk", "pierce": 500 } ],
+      "desc": "造成 130% 攻击力伤害，无视目标 50% 防御。"
+    },
+    {
+      "id": "sk_b008_s1", "name": "圣辉净化", "cost": 2, "trigger": "active",
+      "tags": ["purify"], "target": { "side": "ally", "select": "all", "count": 3 },
+      "effects": [
+        { "op": "PURIFY", "count": 3 },
+        { "op": "HEAL", "power": 900, "scale": "atk" }
+      ],
+      "desc": "净化全体友军的负面状态，并恢复 90% 攻击力的生命。"
+    },
+    {
+      "id": "sk_s001_s1", "name": "烈焰冲击", "cost": 2, "trigger": "active",
+      "tags": ["pierce"], "target": { "side": "enemy", "select": "lowest_hp", "count": 1 },
+      "effects": [ { "op": "DAMAGE", "power": 1600, "scale": "atk", "pierce": 500 } ],
+      "desc": "造成 160% 攻击力伤害（以施法者攻击力计算），无视 50% 防御。"
+    },
+    {
+      "id": "sk_s002_s1", "name": "复苏之露", "cost": 1, "trigger": "active",
+      "tags": ["heal"], "target": { "side": "ally", "select": "lowest_hp", "count": 1 },
+      "effects": [ { "op": "HEAL", "power": 1400, "scale": "atk" } ],
+      "desc": "为血量最低的友军恢复 140% 攻击力的生命。"
+    }
+  ]
+}

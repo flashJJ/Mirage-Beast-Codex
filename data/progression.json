@@ -1,0 +1,22 @@
+{
+  "schema": "progression/v1",
+  "max_level": 50,
+  "exp_formula": { "base": 50, "exponent": 1550 },
+  "breakthrough": [
+    { "level_req": 20, "tier": 1, "stat_mult": 1150, "cost": [{ "item": "mat_break_1", "count": 8 }] },
+    { "level_req": 40, "tier": 2, "stat_mult": 1320, "cost": [{ "item": "mat_break_2", "count": 12 }] }
+  ],
+  "skill_upgrade_cost": [0, 200, 500, 1200],
+  "skill_max_level": 4,
+  "faction_bond": [
+    { "count": 2, "atk_mult": 1050 },
+    { "count": 3, "atk_mult": 1100, "hp_mult": 1050 }
+  ],
+  "summon": {
+    "cost_single": 80,
+    "cost_ten": 700,
+    "rates": { "R": 780, "SR": 180, "SSR": 40 },
+    "pity": { "ssr": 30, "carry_over": true }
+  },
+  "essence_daily": { "quest": 60, "explore": 50, "stage": 40 }
+}

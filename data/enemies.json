@@ -1,0 +1,30 @@
+{
+  "schema": "enemy/v1",
+  "items": [
+    {
+      "id": "enc_tut_01", "name": "草原初战", "difficulty": 1, "ai_level": "easy",
+      "units": [
+        { "card_id": "beast_003", "level": 3, "slot": 0 },
+        { "card_id": "beast_003", "level": 3, "slot": 1 }
+      ],
+      "rewards": { "exp": 120, "coin": 80, "drops": [{ "item": "mat_break_1", "count": 1 }] }
+    },
+    {
+      "id": "enc_tut_02", "name": "裂谷巡逻", "difficulty": 2, "ai_level": "easy",
+      "units": [
+        { "card_id": "beast_001", "level": 6, "slot": 0 },
+        { "card_id": "beast_007", "level": 5, "slot": 1 }
+      ],
+      "rewards": { "exp": 240, "coin": 150, "drops": [{ "item": "mat_break_1", "count": 2 }] }
+    },
+    {
+      "id": "enc_boss_01", "name": "熔岩獠牙", "difficulty": 3, "ai_level": "normal",
+      "units": [
+        { "card_id": "beast_005", "level": 10, "slot": 0 },
+        { "card_id": "beast_001", "level": 8,  "slot": 1 },
+        { "card_id": "beast_002", "level": 8,  "slot": 2 }
+      ],
+      "rewards": { "exp": 600, "coin": 400, "drops": [{ "item": "mat_break_2", "count": 3 }] }
+    }
+  ]
+}

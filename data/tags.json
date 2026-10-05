@@ -1,0 +1,24 @@
+{
+  "schema": "tag/v1",
+  "items": [
+    { "id": "taunt",   "name": "嘲讽", "desc": "强制敌方优先攻击自身" },
+    { "id": "pierce",  "name": "穿透", "desc": "伤害无视目标部分防御" },
+    { "id": "shield",  "name": "护盾", "desc": "获得护盾值，优先抵扣伤害" },
+    { "id": "purify",  "name": "净化", "desc": "移除负面状态；世界中用于瘴气区通行" },
+    { "id": "sense",   "name": "感知", "desc": "查看敌方手牌；世界中用于暗区通行" },
+    { "id": "combo",   "name": "连击", "desc": "追加一次攻击" },
+    { "id": "heal",    "name": "回复", "desc": "恢复生命" },
+    { "id": "counter", "name": "反制", "desc": "受击时反弹伤害" }
+  ],
+  "effect_primitives": [
+    "DAMAGE", "HEAL", "SHIELD", "BUFF", "DEBUFF",
+    "DRAW", "ENERGY", "PURIFY", "TAUNT", "SUMMON"
+  ],
+  "element_chart": {
+    "fire":  { "wood": 1500, "water": 1000, "fire": 1000, "light": 1000, "dark": 1000 },
+    "water": { "fire": 1500, "wood": 1000, "water": 1000, "light": 1000, "dark": 1000 },
+    "wood":  { "water": 1500, "fire": 1000, "wood": 1000, "light": 1000, "dark": 1000 },
+    "light": { "dark": 1450,  "fire": 1000, "water": 1000, "wood": 1000, "light": 1000 },
+    "dark":  { "light": 1450, "fire": 1000, "water": 1000, "wood": 1000, "dark": 1000 }
+  }
+}

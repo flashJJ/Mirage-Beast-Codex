@@ -1,0 +1,8 @@
+{
+  "card": "card/v1",
+  "skill": "skill/v1",
+  "enemy": "enemy/v1",
+  "encounter": "encounter/v1",
+  "progression": "progression/v1",
+  "save": "save/v1"
+}

@@ -1,0 +1,105 @@
+{
+  "schema": "card/v1",
+  "items": [
+    {
+      "id": "beast_001", "name": "焰尾狐", "type": "beast", "rarity": "R",
+      "element": "fire", "faction": "plain", "cost": 2,
+      "base":   { "atk": 12, "hp": 28, "def": 4,  "spd": 11 },
+      "growth": { "atk": 11, "hp": 26, "def": 4,  "spd": 6  },
+      "tags": ["combo"], "skills": ["sk_b001_s1"],
+      "persona": { "traits": ["机灵", "好胜", "嘴硬心软"], "tone": "短句，喜欢用反问", "catchphrase": "你跟不上我的速度！" },
+      "assets": { "sprite": "res://assets/sprites/beasts/beast_001.png", "portrait": "res://assets/portraits/beast_001.png" },
+      "obtain": { "type": "encounter", "zone": 1, "rate": 1200 }
+    },
+    {
+      "id": "beast_002", "name": "潮汐龟", "type": "beast", "rarity": "R",
+      "element": "water", "faction": "plain", "cost": 3,
+      "base":   { "atk": 8,  "hp": 42, "def": 10, "spd": 5  },
+      "growth": { "atk": 7,  "hp": 40, "def": 9,  "spd": 3  },
+      "tags": ["shield"], "skills": ["sk_b002_s1"],
+      "persona": { "traits": ["沉稳", "慢性子", "可靠"], "tone": "慢吞吞的长句", "catchphrase": "不急……慢慢来。" },
+      "assets": { "sprite": "res://assets/sprites/beasts/beast_002.png", "portrait": "res://assets/portraits/beast_002.png" },
+      "obtain": { "type": "encounter", "zone": 1, "rate": 1000 }
+    },
+    {
+      "id": "beast_003", "name": "木灵鹿", "type": "beast", "rarity": "R",
+      "element": "wood", "faction": "plain", "cost": 2,
+      "base":   { "atk": 10, "hp": 30, "def": 6, "spd": 9  },
+      "growth": { "atk": 9,  "hp": 28, "def": 5, "spd": 5  },
+      "tags": ["heal"], "skills": ["sk_b003_s1"],
+      "persona": { "traits": ["温和", "细心"], "tone": "轻柔", "catchphrase": "别担心，有我在。" },
+      "assets": { "sprite": "res://assets/sprites/beasts/beast_003.png", "portrait": "res://assets/portraits/beast_003.png" },
+      "obtain": { "type": "encounter", "zone": 1, "rate": 1200 }
+    },
+    {
+      "id": "beast_004", "name": "藤蔓熊", "type": "beast", "rarity": "SR",
+      "element": "wood", "faction": "plain", "cost": 4,
+      "base":   { "atk": 14, "hp": 46, "def": 9, "spd": 6  },
+      "growth": { "atk": 13, "hp": 42, "def": 8, "spd": 4  },
+      "tags": ["taunt"], "skills": ["sk_b004_s1"],
+      "persona": { "traits": ["憨厚", "护短"], "tone": "朴实", "catchphrase": "站我后面。" },
+      "assets": { "sprite": "res://assets/sprites/beasts/beast_004.png", "portrait": "res://assets/portraits/beast_004.png" },
+      "obtain": { "type": "summon", "zone": 1, "rate": 0 }
+    },
+    {
+      "id": "beast_005", "name": "熔岩獠牙", "type": "beast", "rarity": "SR",
+      "element": "fire", "faction": "crag", "cost": 4,
+      "base":   { "atk": 18, "hp": 34, "def": 6, "spd": 10 },
+      "growth": { "atk": 16, "hp": 30, "def": 5, "spd": 6  },
+      "tags": ["counter"], "skills": ["sk_b005_s1"],
+      "persona": { "traits": ["暴躁", "记仇"], "tone": "强硬", "catchphrase": "打我？你试试。" },
+      "assets": { "sprite": "res://assets/sprites/beasts/beast_005.png", "portrait": "res://assets/portraits/beast_005.png" },
+      "obtain": { "type": "encounter", "zone": 2, "rate": 700 }
+    },
+    {
+      "id": "beast_006", "name": "光羽鹭", "type": "beast", "rarity": "SR",
+      "element": "light", "faction": "relic", "cost": 3,
+      "base":   { "atk": 13, "hp": 30, "def": 5, "spd": 12 },
+      "growth": { "atk": 12, "hp": 27, "def": 4, "spd": 7  },
+      "tags": ["sense"], "skills": ["sk_b006_s1"],
+      "persona": { "traits": ["高傲", "敏锐"], "tone": "简洁优雅", "catchphrase": "我已经看见了。" },
+      "assets": { "sprite": "res://assets/sprites/beasts/beast_006.png", "portrait": "res://assets/portraits/beast_006.png" },
+      "obtain": { "type": "encounter", "zone": 3, "rate": 600 }
+    },
+    {
+      "id": "beast_007", "name": "影爪猫", "type": "beast", "rarity": "R",
+      "element": "dark", "faction": "relic", "cost": 2,
+      "base":   { "atk": 14, "hp": 24, "def": 3, "spd": 13 },
+      "growth": { "atk": 13, "hp": 22, "def": 3, "spd": 7  },
+      "tags": ["pierce"], "skills": ["sk_b007_s1"],
+      "persona": { "traits": ["狡黠", "独来独往"], "tone": "慵懒", "catchphrase": "……喵。" },
+      "assets": { "sprite": "res://assets/sprites/beasts/beast_007.png", "portrait": "res://assets/portraits/beast_007.png" },
+      "obtain": { "type": "encounter", "zone": 3, "rate": 900 }
+    },
+    {
+      "id": "beast_008", "name": "圣辉幼兽", "type": "beast", "rarity": "SSR",
+      "element": "light", "faction": "relic", "cost": 5,
+      "base":   { "atk": 16, "hp": 44, "def": 8, "spd": 9  },
+      "growth": { "atk": 15, "hp": 40, "def": 7, "spd": 6  },
+      "tags": ["purify"], "skills": ["sk_b008_s1"],
+      "persona": { "traits": ["纯净", "好奇"], "tone": "天真", "catchphrase": "一起去看光吧！" },
+      "assets": { "sprite": "res://assets/sprites/beasts/beast_008.png", "portrait": "res://assets/portraits/beast_008.png" },
+      "obtain": { "type": "boss", "zone": 3, "rate": 0 }
+    },
+    {
+      "id": "spell_001", "name": "烈焰冲击", "type": "spell", "rarity": "R",
+      "element": "fire", "faction": "none", "cost": 2,
+      "base":   { "atk": 0, "hp": 0, "def": 0, "spd": 0 },
+      "growth": { "atk": 0, "hp": 0, "def": 0, "spd": 0 },
+      "tags": ["pierce"], "skills": ["sk_s001_s1"],
+      "persona": { "traits": [], "tone": "", "catchphrase": "" },
+      "assets": { "sprite": "", "portrait": "res://assets/portraits/spell_001.png" },
+      "obtain": { "type": "summon", "zone": 0, "rate": 0 }
+    },
+    {
+      "id": "spell_002", "name": "复苏之露", "type": "spell", "rarity": "R",
+      "element": "water", "faction": "none", "cost": 1,
+      "base":   { "atk": 0, "hp": 0, "def": 0, "spd": 0 },
+      "growth": { "atk": 0, "hp": 0, "def": 0, "spd": 0 },
+      "tags": ["heal"], "skills": ["sk_s002_s1"],
+      "persona": { "traits": [], "tone": "", "catchphrase": "" },
+      "assets": { "sprite": "", "portrait": "res://assets/portraits/spell_002.png" },
+      "obtain": { "type": "summon", "zone": 0, "rate": 0 }
+    }
+  ]
+}
