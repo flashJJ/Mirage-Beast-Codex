@@ -10,8 +10,19 @@ const BattleState = preload("res://scripts/battle/battle_state.gd")
 const TurnMachine = preload("res://scripts/battle/turn_machine.gd")
 const DamageCalc = preload("res://scripts/battle/damage_calc.gd")
 
+const BATTLE_SCENE := "res://scenes/battle/BattleScene.tscn"
+
 
 func _ready() -> void:
+	# 默认跑控制台演示（便于 headless 与 CI）；加 --ui 参数进入可玩的战斗界面
+	if OS.get_cmdline_user_args().has("--ui"):
+		get_tree().change_scene_to_file(BATTLE_SCENE)
+		return
+	_console_demo()
+	get_tree().quit()
+
+
+func _console_demo() -> void:
 	print("=== 幻兽绘卷 / Mirage Beast Codex · V0 ===")
 
 	# 1) 加载并校验配置
@@ -59,6 +70,7 @@ func _ready() -> void:
 	for line in state.battle_log:
 		print(line)
 	print("\n结果：%s（共 %d 回合）" % [outcome, state.turn_index])
+	print("结构化战报事件数：%d（供后续 AI 战败复盘 / 回放使用）" % state.events.size())
 
 	# 3) CP 展示
 	print("\n----- CP 示例 -----")
@@ -66,5 +78,3 @@ func _ready() -> void:
 		var u: Dictionary = state.units[i]
 		var cp := DamageCalc.combat_power(u, int(u.get("level", 1)))
 		print("  %s Lv%d  CP=%d" % [String(u.get("name", "?")), int(u.get("level", 1)), cp])
-
-	get_tree().quit()

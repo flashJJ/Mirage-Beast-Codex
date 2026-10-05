@@ -30,7 +30,10 @@ var summon_level: Array = [1, 1]
 var chart: Dictionary = {}
 var cards_db: Dictionary = {}
 var skills_db: Dictionary = {}
+## 显示用日志（给人看的字符串）
 var battle_log: Array = []
+## 结构化战报（给 AI 战败复盘 / 回放 / 分析用）—— 这是 F3，晚做会返工
+var events: Array = []
 
 
 func setup(
@@ -197,11 +200,17 @@ func apply_damage(target_index: int, amount: int, source_index: int) -> int:
 	u["hp"] = int(u.get("hp", 0)) - remaining
 	log_line("%s 受到 %d 点伤害（护盾吸收 %d），剩余 HP %d"
 		% [label(target_index), amount, amount - remaining, maxi(int(u.get("hp", 0)), 0)])
+	events.append({
+		"t": turn_index, "type": "damage", "src": source_index, "dst": target_index,
+		"amount": amount, "absorbed": amount - remaining,
+		"hp_left": maxi(int(u.get("hp", 0)), 0),
+	})
 
 	if int(u.get("hp", 0)) <= 0:
 		u["hp"] = 0
 		u["alive"] = false
 		log_line("%s 倒下了" % label(target_index))
+		events.append({"t": turn_index, "type": "death", "dst": target_index})
 
 	check_outcome()
 	return remaining
@@ -219,6 +228,7 @@ func apply_heal(target_index: int, amount: int) -> int:
 	u["hp"] = hp + healed
 	if healed > 0:
 		log_line("%s 恢复 %d 点生命" % [label(target_index), healed])
+		events.append({"t": turn_index, "type": "heal", "dst": target_index, "amount": healed})
 	return healed
 
 
