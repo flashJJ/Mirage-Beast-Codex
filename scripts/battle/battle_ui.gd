@@ -1,14 +1,14 @@
-## 战斗 UI —— V0 可玩版
+## 战斗 UI（V0 可玩版）
 ##
 ## 设计原则：
-##  - V0 不使用任何美术资产，全部用 ColorRect + Label 表达（美术在 M4 替换）
-##  - UI 只做「显示 + 转发输入」，所有规则判定交给 TurnMachine，不重复实现
-##  - 每次操作后整体重建界面（V0 规模极小，重建比增量更新更不容易出错）
+##  - 全部用代码构建界面（V0 无美术资产，且避免手写 .tscn 出错）
+##  - UI 只做「显示 + 转发输入」，所有规则仍在 TurnMachine / BattleState 中
+##  - 无中文方块字风险：统一使用 SystemFont（系统默认字体含 CJK）
 ##
-## 交互约定：
-##  - 点击手牌        → 打出该卡
-##  - 点击我方单位    → 使用该单位的主动技能（本回合未用过才可）
-##  - 点击「结束回合」 → 敌方行动并进入下一回合
+## 交互：
+##  - 点击手牌 → 打出该卡（自动选敌方血量最低者为目标）
+##  - 点击我方单位 → 使用其主动技能
+##  - 点击「结束回合」→ 敌方行动并进入下一回合
 
 extends Control
 
@@ -17,292 +17,315 @@ const DataLoader = preload("res://scripts/data/data_loader.gd")
 const BattleState = preload("res://scripts/battle/battle_state.gd")
 const TurnMachine = preload("res://scripts/battle/turn_machine.gd")
 
-const COL_BG    := Color8(0x16, 0x21, 0x3E)
-const COL_PANEL := Color8(0x0F, 0x34, 0x60)
-const COL_ENEMY := Color8(0xE9, 0x45, 0x60)
-const COL_ALLY  := Color8(0x6B, 0xCB, 0x77)
-const COL_TEXT  := Color8(0xF0, 0xF0, 0xF0)
-const COL_GOLD  := Color8(0xFF, 0xD9, 0x3D)
+const ALLY_COLOR  := Color(0.06, 0.20, 0.38)
+const ENEMY_COLOR := Color(0.38, 0.10, 0.15)
+const PANEL_COLOR := Color(0.10, 0.13, 0.22)
 
+var _font: Font
 var db: Dictionary
 var state: BattleState
 var tm: TurnMachine
 
-var _info: Label
+var _enemy_box: HBoxContainer
+var _ally_box: HBoxContainer
+var _hand_box: HBoxContainer
 var _log: RichTextLabel
-var _stage: Control
-var _result: Label
+var _info: Label
+var _end_btn: Button
+var _over_panel: PanelContainer
+var _over_label: Label
+
+# 我方初始阵容与卡组（V0 固定，后续由存档/构筑界面提供）
+const ALLY_TEAM := [
+	{"card_id": "beast_001", "level": 8},
+	{"card_id": "beast_002", "level": 8},
+	{"card_id": "beast_003", "level": 8},
+]
+## 对手阵容由 tests/balance.gd 实测选定（候选 B，AI 对 AI 胜率 84.3%）
+## 改动这里必须重跑：godot --headless --script res://tests/balance.gd
+const ENEMY_TEAM := [
+	{"card_id": "beast_005", "level": 8},
+	{"card_id": "beast_007", "level": 8},
+	{"card_id": "beast_001", "level": 7},
+]
+const LIBRARY := [
+	"beast_001", "beast_002", "beast_003", "beast_004",
+	"beast_005", "beast_006", "beast_007", "spell_001",
+	"spell_002", "beast_001", "beast_002", "beast_003",
+	"beast_004", "beast_005", "beast_007", "spell_001",
+]
 
 
 func _ready() -> void:
-	_build_shell()
-	_start_battle()
+	_font = SystemFont.new()
+	db = DataLoader.load_all()
+	_build_ui()
+	_new_battle()
 
 
-# ── 界面骨架 ──────────────────────────────────────
+# ── 界面构建（只建一次）──────────────────────────
 
-func _build_shell() -> void:
-	var bg := ColorRect.new()
-	bg.color = COL_BG
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(bg)
+func _build_ui() -> void:
+	var root := VBoxContainer.new()
+	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.add_theme_constant_override("separation", 6)
+	add_child(root)
 
-	_info = Label.new()
-	_info.position = Vector2(16, 10)
-	_info.size = Vector2(700, 28)
-	_info.add_theme_font_size_override("font_size", 18)
-	_info.add_theme_color_override("font_color", COL_GOLD)
-	add_child(_info)
+	# 顶部信息条
+	var top := HBoxContainer.new()
+	root.add_child(top)
+	_info = _label("—", 16)
+	_info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(_info)
+	_end_btn = Button.new()
+	_end_btn.text = "结束回合"
+	_end_btn.custom_minimum_size = Vector2(110, 34)
+	_end_btn.pressed.connect(_on_end_turn)
+	top.add_child(_end_btn)
 
-	_stage = Control.new()
-	_stage.position = Vector2(16, 44)
-	_stage.size = Vector2(928, 380)
-	add_child(_stage)
+	# 敌方
+	root.add_child(_label("敌方", 15))
+	_enemy_box = HBoxContainer.new()
+	_enemy_box.add_theme_constant_override("separation", 8)
+	root.add_child(_enemy_box)
 
+	# 日志
 	_log = RichTextLabel.new()
-	_log.position = Vector2(16, 432)
-	_log.size = Vector2(928, 92)
+	_log.custom_minimum_size = Vector2(0, 150)
 	_log.bbcode_enabled = true
 	_log.scroll_following = true
+	if _font:
+		_log.add_theme_font_override("normal_font", _font)
 	_log.add_theme_font_size_override("normal_font_size", 13)
-	add_child(_log)
+	root.add_child(_log)
 
-	var end_btn := Button.new()
-	end_btn.text = "结束回合"
-	end_btn.position = Vector2(790, 8)
-	end_btn.size = Vector2(150, 32)
-	end_btn.pressed.connect(_on_end_turn)
-	add_child(end_btn)
+	# 我方
+	root.add_child(_label("我方（点击使用技能）", 15))
+	_ally_box = HBoxContainer.new()
+	_ally_box.add_theme_constant_override("separation", 8)
+	root.add_child(_ally_box)
 
-	_result = Label.new()
-	_result.set_anchors_preset(Control.PRESET_CENTER)
-	_result.size = Vector2(600, 60)
-	_result.position = Vector2(180, 240)
-	_result.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_result.add_theme_font_size_override("font_size", 40)
-	_result.add_theme_color_override("font_color", COL_GOLD)
-	_result.visible = false
-	add_child(_result)
+	# 手牌
+	root.add_child(_label("手牌（点击出牌）", 15))
+	_hand_box = HBoxContainer.new()
+	_hand_box.add_theme_constant_override("separation", 8)
+	root.add_child(_hand_box)
+
+	# 结束覆盖层
+	_over_panel = PanelContainer.new()
+	_over_panel.set_anchors_preset(Control.PRESET_CENTER)
+	_over_panel.visible = false
+	add_child(_over_panel)
+	var ov := VBoxContainer.new()
+	_over_panel.add_child(ov)
+	_over_label = _label("", 28)
+	ov.add_child(_over_label)
+	var again := Button.new()
+	again.text = "再来一局"
+	again.pressed.connect(_new_battle)
+	ov.add_child(again)
 
 
-# ── 战斗初始化 ────────────────────────────────────
+# ── 战斗流程 ──────────────────────────────────────
 
-func _start_battle() -> void:
-	var loaded := DataLoader.load_all_checked()
-	db = loaded["db"]
-	var errors: Array = loaded["errors"]
-	if not errors.is_empty():
-		_result.text = "配置错误 %d 项，详见控制台" % errors.size()
-		_result.visible = true
-		for e in errors:
-			push_error(e)
-		return
-
-	var ally := [
-		{"card_id": "beast_001", "level": 6},
-		{"card_id": "beast_002", "level": 6},
-		{"card_id": "beast_003", "level": 6},
-	]
-	var enemy := [
-		{"card_id": "beast_005", "level": 6},
-		{"card_id": "beast_007", "level": 5},
-	]
-	var library := [
-		"beast_001", "beast_002", "beast_003", "beast_004",
-		"beast_005", "beast_007", "spell_001", "spell_002",
-		"beast_001", "beast_002", "beast_003", "beast_004",
-		"beast_005", "beast_007", "spell_001", "spell_002",
-	]
-
+func _new_battle() -> void:
 	state = BattleState.new()
-	state.setup(ally, enemy, randi(),
+	state.setup(
+		ALLY_TEAM.duplicate(true), ENEMY_TEAM.duplicate(true),
+		randi(),
 		db.get("element_chart", {}),
 		db.get("cards", {}), db.get("skills", {}),
-		library, library)
-
+		LIBRARY.duplicate(), LIBRARY.duplicate(),
+	)
 	tm = TurnMachine.new()
-	tm.setup(state, "player", "easy")
+	tm.setup(state, "human", "easy")
 	tm.start_turn()
+	_over_panel.visible = false
 	_refresh()
 
-
-# ── 刷新 ──────────────────────────────────────────
 
 func _refresh() -> void:
 	if state == null:
 		return
 
-	for c in _stage.get_children():
-		c.queue_free()
-
-	_info.text = "回合 %d / %d　　费用 %d/%d　　牌库 我 %d / 敌 %d" % [
+	_info.text = "回合 %d / %d　|　费用 %d / %d　|　牌库 %d 张" % [
 		state.turn_index, C.MAX_TURNS,
 		int(state.energy[BattleState.Side.ALLY]), C.MAX_ENERGY,
 		(state.libraries[BattleState.Side.ALLY] as Array).size(),
-		(state.libraries[BattleState.Side.ENEMY] as Array).size(),
 	]
 
-	_row(BattleState.Side.ENEMY, Vector2(0, 0))
-	_row(BattleState.Side.ALLY, Vector2(0, 130))
-	_hand(Vector2(0, 270))
+	_fill_units(_enemy_box, BattleState.Side.ENEMY)
+	_fill_units(_ally_box, BattleState.Side.ALLY)
+	_fill_hand()
 
+	# 日志：只显示最后 12 行
 	var lines: Array = state.battle_log
-	var show_from := maxi(lines.size() - 8, 0)
-	var txt := ""
-	for i in range(show_from, lines.size()):
-		txt += String(lines[i]) + "\n"
-	_log.text = txt
+	var start := maxi(lines.size() - 12, 0)
+	var out := ""
+	for i in range(start, lines.size()):
+		out += String(lines[i]) + "\n"
+	_log.text = out
 
 	if state.is_over():
-		_result.text = _result_text(state.outcome)
-		_result.visible = true
+		_end_btn.disabled = true
+		var txt := "胜利！" if state.outcome == "ally_win" else ("失败…" if state.outcome == "enemy_win" else "平局")
+		_over_label.text = "%s\n共 %d 回合" % [txt, state.turn_index]
+		_over_panel.visible = true
+	else:
+		_end_btn.disabled = false
+		_over_panel.visible = false
 
 
-func _result_text(outcome: String) -> String:
-	match outcome:
-		"ally_win":
-			return "胜利！"
-		"enemy_win":
-			return "败北…"
-		"draw":
-			return "平局"
-		_:
-			return outcome
+# ── 动态区域 ──────────────────────────────────────
 
-
-# ── 单位行 ────────────────────────────────────────
-
-func _row(side: int, pos: Vector2) -> void:
-	var is_ally := side == BattleState.Side.ALLY
-	var idx := 0
+func _fill_units(box: HBoxContainer, side: int) -> void:
+	for c in box.get_children():
+		c.queue_free()
 	for i in state.units.size():
 		var u: Dictionary = state.units[i]
 		if int(u.get("side", -1)) != side:
 			continue
-		_stage.add_child(_unit_panel(i, u, is_ally, pos + Vector2(idx * 250, 0)))
-		idx += 1
+		box.add_child(_unit_widget(i, u, side == BattleState.Side.ALLY))
 
 
-func _unit_panel(index: int, u: Dictionary, is_ally: bool, pos: Vector2) -> Control:
-	var panel := Panel.new()
-	panel.position = pos
-	panel.size = Vector2(230, 110)
+func _unit_widget(idx: int, u: Dictionary, is_ally: bool) -> Control:
+	var p := PanelContainer.new()
+	p.custom_minimum_size = Vector2(180, 118)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = ALLY_COLOR if is_ally else ENEMY_COLOR
+	sb.set_corner_radius_all(6)
+	p.add_theme_stylebox_override("panel", sb)
 
-	var bg := ColorRect.new()
-	bg.color = COL_PANEL
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	panel.add_child(bg)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 3)
+	p.add_child(v)
 
-	var alive := bool(u.get("alive", false))
-	var accent := COL_ALLY if is_ally else COL_ENEMY
-	if not alive:
-		accent = Color8(0x8A, 0x8A, 0x8A)
+	var alive: bool = bool(u.get("alive", false))
+	var title := _label("%s Lv%d %s" % [
+		String(u.get("name", "?")), int(u.get("level", 1)),
+		"" if alive else "（倒下）"], 14)
+	v.add_child(title)
 
-	var name_lbl := Label.new()
-	name_lbl.position = Vector2(8, 6)
-	name_lbl.size = Vector2(214, 22)
-	name_lbl.text = "%s Lv%d" % [String(u.get("name", "?")), int(u.get("level", 1))]
-	name_lbl.add_theme_font_size_override("font_size", 15)
-	name_lbl.add_theme_color_override("font_color", accent)
-	panel.add_child(name_lbl)
+	var bar := ProgressBar.new()
+	bar.max_value = maxf(float(u.get("max_hp", 1)), 1.0)
+	bar.value = maxf(float(u.get("hp", 0)), 0.0)
+	bar.custom_minimum_size = Vector2(160, 14)
+	bar.show_percentage = false
+	if _font:
+		bar.add_theme_font_override("font", _font)
+	v.add_child(bar)
 
-	var hp := ProgressBar.new()
-	hp.position = Vector2(8, 32)
-	hp.size = Vector2(214, 14)
-	hp.max_value = maxi(int(u.get("max_hp", 1)), 1)
-	hp.value = maxi(int(u.get("hp", 0)), 0)
-	hp.show_percentage = false
-	panel.add_child(hp)
-
-	var hp_lbl := Label.new()
-	hp_lbl.position = Vector2(8, 48)
-	hp_lbl.size = Vector2(214, 18)
-	var shield: int = int(u.get("shield", 0))
-	hp_lbl.text = "HP %d/%d%s" % [
-		maxi(int(u.get("hp", 0)), 0), int(u.get("max_hp", 1)),
-		(" 盾%d" % shield) if shield > 0 else "",
-	]
-	hp_lbl.add_theme_font_size_override("font_size", 13)
-	hp_lbl.add_theme_color_override("font_color", COL_TEXT)
-	panel.add_child(hp_lbl)
-
-	var stat_lbl := Label.new()
-	stat_lbl.position = Vector2(8, 68)
-	stat_lbl.size = Vector2(214, 18)
-	stat_lbl.text = "ATK %d  DEF %d  SPD %d" % [
-		int(u.get("atk", 0)), int(u.get("def", 0)), int(u.get("spd", 0))]
-	stat_lbl.add_theme_font_size_override("font_size", 12)
-	stat_lbl.add_theme_color_override("font_color", COL_TEXT)
-	panel.add_child(stat_lbl)
+	v.add_child(_label("HP %d / %d　盾 %d" % [
+		int(u.get("hp", 0)), int(u.get("max_hp", 1)), int(u.get("shield", 0))], 13))
+	v.add_child(_label("ATK %d　DEF %d　SPD %d" % [
+		int(u.get("atk", 0)), int(u.get("def", 0)), int(u.get("spd", 0))], 12))
 
 	var used: bool = bool(u.get("skill_used_this_turn", false))
-	var act_lbl := Label.new()
-	act_lbl.position = Vector2(8, 88)
-	act_lbl.size = Vector2(214, 18)
-	act_lbl.text = "已行动" if used else "可行动"
-	act_lbl.add_theme_font_size_override("font_size", 12)
-	act_lbl.add_theme_color_override("font_color", COL_GOLD if not used else Color8(0x8A, 0x8A, 0x8A))
-	panel.add_child(act_lbl)
+	v.add_child(_label("已行动" if used else "可行动", 12))
 
-	# 我方单位可点击 → 使用主动技能
 	if is_ally and alive and not used:
+		var sk := _first_usable_skill(u)
 		var btn := Button.new()
-		btn.set_anchors_preset(Control.PRESET_FULL_RECT)
-		btn.flat = true
-		btn.pressed.connect(_on_unit_pressed.bind(index))
-		panel.add_child(btn)
+		btn.text = ("技能 · %s" % String(sk.get("name", "?"))) if not sk.is_empty() else "普攻"
+		btn.pressed.connect(_on_unit_action.bind(idx))
+		v.add_child(btn)
 
-	return panel
+	return p
 
 
-# ── 手牌 ──────────────────────────────────────────
-
-func _hand(pos: Vector2) -> void:
+func _fill_hand() -> void:
+	for c in _hand_box.get_children():
+		c.queue_free()
 	var hand: Array = state.hands[BattleState.Side.ALLY]
 	var energy: int = int(state.energy[BattleState.Side.ALLY])
 	for i in hand.size():
-		var card_id := String(hand[i])
-		var card: Dictionary = db.get("cards", {}).get(card_id, {})
+		var cid := String(hand[i])
+		var card: Dictionary = db.get("cards", {}).get(cid, {})
 		var cost := int(card.get("cost", 0))
-		var affordable := cost <= energy
-
 		var btn := Button.new()
-		btn.position = pos + Vector2(i * 160, 0)
-		btn.size = Vector2(150, 100)
-		btn.text = "%s\n费用 %d\n%s" % [
-			String(card.get("name", card_id)), cost,
-			("ATK %d / HP %d" % [int(card.get("base", {}).get("atk", 0)),
-								  int(card.get("base", {}).get("hp", 0))])
-			if String(card.get("type", "")) == "beast" else "秘术卡",
-		]
-		btn.disabled = not affordable or state.is_over()
-		btn.pressed.connect(_on_card_pressed.bind(i))
-		_stage.add_child(btn)
+		btn.custom_minimum_size = Vector2(118, 96)
+		btn.text = "%s\n费用 %d" % [String(card.get("name", cid)), cost]
+		btn.disabled = cost > energy
+		btn.pressed.connect(_on_play_card.bind(i))
+		_hand_box.add_child(btn)
+	if hand.is_empty():
+		_hand_box.add_child(_label("（手牌为空）", 13))
 
 
 # ── 输入处理 ──────────────────────────────────────
 
-func _on_card_pressed(hand_index: int) -> void:
+## 按技能的 target 配置自动选目标 —— 关键：治疗/护盾/净化要打自己人
+## 目标阵营来自 data/skills.json 的 target.side，UI 不许自己拍脑袋定死为敌方
+func _auto_target(skill: Dictionary, caster_index: int = -1) -> int:
+	var cfg: Dictionary = skill.get("target", {})
+	var side_key := String(cfg.get("side", "enemy"))
+	if side_key == "self":
+		return caster_index
+	var side := BattleState.Side.ALLY if side_key == "ally" else BattleState.Side.ENEMY
+	var pool: Array = state.living_indices(side)
+	if pool.is_empty():
+		return -1
+	if String(cfg.get("select", "lowest_hp")) == "highest_atk":
+		pool.sort_custom(func(a, b): return int(state.units[a].get("atk", 0)) > int(state.units[b].get("atk", 0)))
+	else:
+		pool.sort_custom(func(a, b): return int(state.units[a].get("hp", 0)) < int(state.units[b].get("hp", 0)))
+	return int(pool[0])
+
+
+func _lowest_enemy() -> int:
+	return _auto_target({"target": {"side": "enemy", "select": "lowest_hp"}})
+
+
+## 该单位当前费用下第一个可用的主动技能；没有则返回空字典（应走普攻）
+func _first_usable_skill(u: Dictionary) -> Dictionary:
+	var energy: int = int(state.energy[BattleState.Side.ALLY])
+	for skid in (u.get("skills", []) as Array):
+		var sk: Dictionary = state.skills_db.get(skid, {})
+		if String(sk.get("trigger", "active")) != "active":
+			continue
+		if int(sk.get("cost", 0)) > energy:
+			continue
+		return sk
+	return {}
+
+
+func _on_play_card(hand_index: int) -> void:
 	if state == null or state.is_over():
 		return
-	var target := _default_target()
-	tm.play_card(BattleState.Side.ALLY, hand_index, target)
-	_after_action()
+	var hand: Array = state.hands[BattleState.Side.ALLY]
+	if hand_index < 0 or hand_index >= hand.size():
+		return
+	var card: Dictionary = db.get("cards", {}).get(String(hand[hand_index]), {})
+	var sk := {}
+	for skid in (card.get("skills", []) as Array):
+		if state.skills_db.has(skid):
+			sk = state.skills_db[skid]
+			break
+	tm.play_card(BattleState.Side.ALLY, hand_index, _auto_target(sk, -1))
+	_refresh()
 
 
-func _on_unit_pressed(unit_index: int) -> void:
+## 单位行动：优先用主动技能，没有可用技能则普攻
+func _on_unit_action(unit_index: int) -> void:
 	if state == null or state.is_over():
+		return
+	if unit_index < 0 or unit_index >= state.units.size():
 		return
 	var u: Dictionary = state.units[unit_index]
+	if not bool(u.get("alive", false)) or bool(u.get("skill_used_this_turn", false)):
+		return
 	for skid in (u.get("skills", []) as Array):
 		var sk: Dictionary = state.skills_db.get(skid, {})
 		if String(sk.get("trigger", "active")) != "active":
 			continue
 		if int(sk.get("cost", 0)) > int(state.energy[BattleState.Side.ALLY]):
 			continue
-		if tm.use_skill(unit_index, String(skid), _default_target()):
-			break
-	_after_action()
+		if tm.use_skill(unit_index, String(skid), _auto_target(sk, unit_index)):
+			_refresh()
+			return
+	# 只有进场/被动技能的单位也要有输出手段，否则等于站桩挨打
+	tm.basic_attack(unit_index, _lowest_enemy())
+	_refresh()
 
 
 func _on_end_turn() -> void:
@@ -312,20 +335,12 @@ func _on_end_turn() -> void:
 	_refresh()
 
 
-func _after_action() -> void:
-	_refresh()
-	if state.is_over():
-		_result.text = _result_text(state.outcome)
-		_result.visible = true
+# ── 小工具 ────────────────────────────────────────
 
-
-## 自动目标：敌方血量最低的存活单位（V0 无手动选目标 UI）
-func _default_target() -> int:
-	var best := -1
-	var best_hp := 2147483647
-	for i in state.living_indices(BattleState.Side.ENEMY):
-		var hp: int = int(state.units[i].get("hp", 0))
-		if hp < best_hp:
-			best_hp = hp
-			best = int(i)
-	return best
+func _label(text: String, size: int) -> Label:
+	var l := Label.new()
+	l.text = text
+	if _font:
+		l.add_theme_font_override("font", _font)
+	l.add_theme_font_size_override("font_size", size)
+	return l

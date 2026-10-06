@@ -4,7 +4,7 @@ config_version=5
 
 config/name="Mirage Beast Codex"
 config/description="幻兽绘卷 — 2D 俯视角幻兽收集 + 回合制卡牌对战（PC 单机 / Web）"
-run/main_scene="res://scenes/main.tscn"
+run/main_scene="res://scenes/battle/BattleScene.tscn"
 config/features=PackedStringArray("4.3", "GL Compatibility")
 config/version="0.0.1"
 
