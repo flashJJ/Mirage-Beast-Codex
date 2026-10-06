@@ -103,7 +103,7 @@ func _build_ui() -> void:
 
 	# 日志
 	_log = RichTextLabel.new()
-	_log.custom_minimum_size = Vector2(0, 150)
+	_log.custom_minimum_size = Vector2(0, 100)
 	_log.bbcode_enabled = true
 	_log.scroll_following = true
 	if _font:

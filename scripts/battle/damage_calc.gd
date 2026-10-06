@@ -57,6 +57,27 @@ static func damage(
 	return maxi(dmg, 1)
 
 
+## 伤害估算（不含暴击与随机浮动）—— 给 AI 判断「这一下能不能打死」用。
+## 必须是纯函数：AI 若为此消耗 RNG，会改变后续随机序列，破坏可复现性。
+static func estimate(attacker: Dictionary, defender: Dictionary, power: int, pierce: int, chart: Dictionary) -> int:
+	var atk: int = int(attacker.get("atk", 0))
+	var def: int = int(defender.get("def", 0))
+	var base: int = (atk * power) / C.FIXED_SCALE
+	var def_val: int = (def * C.DEF_FACTOR) / C.FIXED_SCALE
+	if pierce > 0:
+		def_val = (def_val * (C.FIXED_SCALE - pierce)) / C.FIXED_SCALE
+	var dmg: int = base - def_val
+	if dmg < 1:
+		dmg = 1
+	var mult: int = element_multiplier(chart, String(attacker.get("element", "")), String(defender.get("element", "")))
+	dmg = (dmg * mult) / C.FIXED_SCALE
+	if int(defender.get("slot", 0)) >= 3:
+		dmg = (dmg * C.BACK_ROW_DAMAGE_TAKEN) / C.FIXED_SCALE
+	if int(attacker.get("slot", 0)) >= 3:
+		dmg = (dmg * C.BACK_ROW_DAMAGE_DEALT) / C.FIXED_SCALE
+	return maxi(dmg, 1)
+
+
 static func element_multiplier(chart: Dictionary, atk_elem: String, def_elem: String) -> int:
 	if chart.has(atk_elem):
 		var row: Dictionary = chart[atk_elem]

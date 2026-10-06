@@ -55,6 +55,16 @@ func _init() -> void:
 		var verdict := "OK" if r.win >= TARGET_LOW and r.win <= TARGET_HIGH else ("偏易" if r.win > TARGET_HIGH else "偏难")
 		print("    Lv%-2d      %5.1f%%    %5.1f      %s" % [lv, r.win, r.turns, verdict])
 
+	# 难度档位对比（F6）：验证三档 AI 是否真有区分度
+	# 我方固定 "normal"（近似一个"会打但不算顶尖"的玩家），只变敌方档位
+	print("\n── 敌方 AI 难度对比（我方固定 normal）──")
+	print("  敌方档位   我方胜率   平均回合   终局存活   判定")
+	for lv_name in ["easy", "normal", "hard"]:
+		var r := _measure(Session.ally_team, Session.enemy_team, "normal", lv_name)
+		print("    %-8s %5.1f%%   %5.1f     %5.2f      %s"
+			% [lv_name, r.win, r.turns, r.alive,
+			   "越往上应越难" if lv_name == "hard" else ""])
+
 	# 候选对手配置对比：把「敌方等级」从粗粒度扫描收窄到具体阵容
 	print("\n── 候选对手配置对比（我方固定为 Session 当前阵容）──")
 	print("  配置                                我方胜率   平均回合   判定")
@@ -89,7 +99,7 @@ func _report(title: String, ally: Array, enemy: Array) -> void:
 		% [r.wipe, r.timeout, r.alive])
 
 
-func _measure(ally: Array, enemy: Array) -> Dictionary:
+func _measure(ally: Array, enemy: Array, ally_ai: String = "easy", enemy_ai: String = "easy") -> Dictionary:
 	var wins := 0
 	var draws := 0
 	var turn_sum := 0
@@ -106,7 +116,7 @@ func _measure(ally: Array, enemy: Array) -> Dictionary:
 			Session.library.duplicate(), Session.library.duplicate(),
 		)
 		var tm := TurnMachine.new()
-		tm.setup(st, "easy", "easy")
+		tm.setup(st, ally_ai, enemy_ai)
 		tm.run()
 		turn_sum += st.turn_index
 		alive_sum += st.living_count(BattleState.Side.ALLY)
