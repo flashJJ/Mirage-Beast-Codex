@@ -2,8 +2,11 @@
 ##
 ## 全部使用定点整数运算（千分比），无浮点，保证结果可复现。
 ##
-## DMG = (ATK x 技能倍率 - DEF x 0.45 x (1 - 穿透))
+## DMG = ATK x 技能倍率 x 1000/(1000 + DEF x DEF_FACTOR/1000 x (1 - 穿透))
 ##       x 克制系数 x 站位系数 x 暴击系数 x RNG(0.95~1.05)
+##
+## 减伤是**乘性**的（F43）。不要用固定减算：那会在「攻防接近」的区间
+## 产生阈值式的等级悬崖（Lv7→Lv8 胜率掉 49 个百分点），见 BALANCE-ANALYSIS §3 P1。
 
 class_name DamageCalc
 extends RefCounted
@@ -26,14 +29,12 @@ static func damage(
 	# 1) 基础伤害
 	var base: int = (atk * power) / C.FIXED_SCALE
 
-	# 2) 防御减免（穿透按比例削减防御贡献）
+	# 2) 防御减免（乘性，收益递减，无阈值）—— 穿透按比例削减防御贡献
 	var def_val: int = (def * C.DEF_FACTOR) / C.FIXED_SCALE
 	if pierce > 0:
 		def_val = (def_val * (C.FIXED_SCALE - pierce)) / C.FIXED_SCALE
 
-	var dmg: int = base - def_val
-	if dmg < 1:
-		dmg = 1
+	var dmg: int = (base * C.FIXED_SCALE) / (C.FIXED_SCALE + def_val)
 
 	# 3) 属性克制
 	var mult: int = element_multiplier(chart, String(attacker.get("element", "")),
@@ -66,9 +67,7 @@ static func estimate(attacker: Dictionary, defender: Dictionary, power: int, pie
 	var def_val: int = (def * C.DEF_FACTOR) / C.FIXED_SCALE
 	if pierce > 0:
 		def_val = (def_val * (C.FIXED_SCALE - pierce)) / C.FIXED_SCALE
-	var dmg: int = base - def_val
-	if dmg < 1:
-		dmg = 1
+	var dmg: int = (base * C.FIXED_SCALE) / (C.FIXED_SCALE + def_val)
 	var mult: int = element_multiplier(chart, String(attacker.get("element", "")), String(defender.get("element", "")))
 	dmg = (dmg * mult) / C.FIXED_SCALE
 	if int(defender.get("slot", 0)) >= 3:

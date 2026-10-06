@@ -33,6 +33,7 @@ func _init() -> void:
 	test_schema_validation(loaded["errors"])
 	test_element_multipliers()
 	test_determinism_of_damage()
+	test_multiplicative_defense()
 	test_shield_absorbs_first()
 	test_death_sets_alive_false()
 	test_taunt_sets_target()
@@ -104,6 +105,51 @@ func test_determinism_of_damage() -> void:
 	var no_pierce := DamageCalc.damage(attacker, defender, 1000, 0, st.chart, BattleRNG.new(7))
 	var with_pierce := DamageCalc.damage(attacker, defender, 1000, 500, st.chart, BattleRNG.new(7))
 	_check("穿透 50% 提高伤害", with_pierce >= no_pierce, "%d vs %d" % [with_pierce, no_pierce])
+
+
+## F43 乘性减伤的回归测试。
+## 目的：把「减伤模型」这个结构性决策钉死 —— 若有人改回固定减算，这些断言会立刻红。
+## 用 estimate()（不含暴击与随机浮动）来断言精确值，避免受 RNG 影响。
+func test_multiplicative_defense() -> void:
+	print("\n[乘性减伤 F43]")
+	var chart := {}
+	var a := {"atk": 100, "def": 10, "element": "fire", "slot": 0}
+	var d0 := {"atk": 50, "def": 0, "element": "wood", "slot": 0}
+	var d32 := {"atk": 50, "def": 32, "element": "wood", "slot": 0}
+	var d64 := {"atk": 50, "def": 64, "element": "wood", "slot": 0}
+	var dbig := {"atk": 50, "def": 5000, "element": "wood", "slot": 0}
+
+	# 1) 钉住精确值：base=100，DEF=32 → def_val=32*5800/1000=185 → 100*1000/1185=84
+	_check("DEF=32 时伤害 = 84（公式锚点）",
+		DamageCalc.estimate(a, d32, 1000, 0, chart) == 84,
+		"实际 %d" % DamageCalc.estimate(a, d32, 1000, 0, chart))
+	_check("DEF=0 时无减伤（= 攻击力）",
+		DamageCalc.estimate(a, d0, 1000, 0, chart) == 100)
+	_check("穿透 50% 使 DEF=32 的减伤减半（185→92 → 91）",
+		DamageCalc.estimate(a, d32, 1000, 500, chart) == 91,
+		"实际 %d" % DamageCalc.estimate(a, d32, 1000, 500, chart))
+
+	# 2) 乘性的两个本质特征：单调递减 + 收益递减
+	var e0 := DamageCalc.estimate(a, d0, 1000, 0, chart)
+	var e32 := DamageCalc.estimate(a, d32, 1000, 0, chart)
+	var e64 := DamageCalc.estimate(a, d64, 1000, 0, chart)
+	_check("防御越高伤害越低（单调）", e0 > e32 and e32 > e64, "%d/%d/%d" % [e0, e32, e64])
+	_check("减伤收益递减（后 32 点防御的收益 < 前 32 点）",
+		(e0 - e32) > (e32 - e64), "前段 -%d，后段 -%d" % [e0 - e32, e32 - e64])
+
+	# 3) 固定减算的致命缺陷：防御足够高会出现 0/负伤害；乘性永远不会
+	_check("超高防御下伤害仍 ≥1（无阈值/非负）",
+		DamageCalc.estimate(a, dbig, 1000, 0, chart) >= 1)
+	_check("超高防御下伤害显著低于无甲（说明防御确实有效）",
+		DamageCalc.estimate(a, dbig, 1000, 0, chart) < e32 / 2)
+
+	# 4) 无等级悬崖：攻击力小幅增长，伤害应近似线性增长（不该出现突变）
+	var a2 := {"atk": 110, "def": 10, "element": "fire", "slot": 0}
+	var e_a := DamageCalc.estimate(a, d32, 1000, 0, chart)
+	var e_a2 := DamageCalc.estimate(a2, d32, 1000, 0, chart)
+	_check("攻击 +10% → 伤害增幅在 8%~12%（线性，无悬崖）",
+		e_a2 * 100 >= e_a * 108 and e_a2 * 100 <= e_a * 112,
+		"%d → %d" % [e_a, e_a2])
 
 
 func test_shield_absorbs_first() -> void:

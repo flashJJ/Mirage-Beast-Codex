@@ -14,6 +14,14 @@ extends Node
 const MAX_ENERGY        := 8      # 费用上限
 const ENERGY_PER_TURN   := 1      # 每回合恢复
 const START_ENERGY      := 2      # 首回合初始费用
+
+# ── 后手补偿（F45）──────────────────────────────
+## 诊断发现：先手方优势高达 30~48 个百分点（镜像对局先手胜率 98.3%，
+## 战斗 4.4 回合就结束），这是「等级悬崖」的真正根因，不是减伤模型。
+## 用卡牌游戏通行的后手补偿把镜像胜率拉回 50% 附近：后手多抽 1 张、多 1 点费用。
+## 详见 docs/BALANCE-ANALYSIS.md §8。V0 我方恒先手，故补偿给 ENEMY。
+const SECOND_MOVER_EXTRA_DRAW   := 1
+const SECOND_MOVER_EXTRA_ENERGY := 1
 const HAND_SIZE_MAX     := 5      # 手牌上限
 const START_HAND        := 3      # 起手牌数
 const LIBRARY_SIZE      := 16     # 牌库张数
@@ -29,7 +37,14 @@ const BACK_ROW_DAMAGE_TAKEN := 750   # 后排受到伤害 x 0.75
 const BACK_ROW_DAMAGE_DEALT := 1100  # 后排造成伤害 x 1.10
 
 # ── 伤害公式（千分比）────────────────────────────
-const DEF_FACTOR        := 450   # 防御减伤系数 0.45
+## 乘性减伤（F43）：DMG = base × 1000 / (1000 + DEF × DEF_FACTOR / 1000)
+##
+## 原来是固定减算 `base − DEF×0.45`（DEF_FACTOR=450），导致**等级悬崖**：
+## 攻防接近时净伤害对属性极端敏感，Lv7→Lv8（属性只涨 8%）胜率掉 49 个百分点
+## （见 docs/BALANCE-ANALYSIS.md §3 P1）。乘性模型无阈值、无负值、收益递减，
+## 属性曲线变平滑。5800 是让 Lv8 典型防御（DEF≈32）的减伤率 ≈16%，
+## 与原模型在基线点基本等价，便于对照。
+const DEF_FACTOR        := 5800  # 乘性减伤系数
 const CRIT_MULT         := 1500  # 暴击倍率 1.50
 const CRIT_BASE_RATE    := 50    # 基础暴击率 5.0%（千分比）
 const DMG_FLOAT_MIN     := 950   # 随机浮动下限 0.95

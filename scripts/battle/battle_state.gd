@@ -62,11 +62,14 @@ func setup(
 
 	libraries = [ally_library.duplicate(), enemy_library.duplicate()]
 	hands = [[], []]
-	energy = [C.START_ENERGY, C.START_ENERGY]
+	# 后手补偿（F45）：先手方在爆发阵容下优势过大，镜像对局先手胜率 98.3%
+	energy = [C.START_ENERGY, C.START_ENERGY + C.SECOND_MOVER_EXTRA_ENERGY]
 
 	draw(Side.ALLY, C.START_HAND)
-	draw(Side.ENEMY, C.START_HAND)
-	log_line("战斗开始：我方 %d 只 / 敌方 %d 只" % [living_count(Side.ALLY), living_count(Side.ENEMY)])
+	draw(Side.ENEMY, C.START_HAND + C.SECOND_MOVER_EXTRA_DRAW)
+	log_line("战斗开始：我方 %d 只 / 敌方 %d 只（后手补偿 +%d 牌 +%d 费）" % [
+		living_count(Side.ALLY), living_count(Side.ENEMY),
+		C.SECOND_MOVER_EXTRA_DRAW, C.SECOND_MOVER_EXTRA_ENERGY])
 
 
 # ── 构建单位 ──────────────────────────────────────
