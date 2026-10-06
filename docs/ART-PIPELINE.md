@@ -53,6 +53,14 @@ Pure transparent background. Clean vector-like crisp edges.
 - **不要**写 "cute logo" / "sticker"（会带白边和圆形底）
 - 属性词用英文（fire/water/wood/light/dark），中文属性词容易触发书法字体
 
+### 生成操作的坑（工程侧，与 prompt 无关）
+
+- **并行生成会文件名碰撞**：多张图同一秒完成时返回同一个时间戳文件名，互相覆盖
+  （第二批 5 张并行只活下来 3 张）。**必须串行生成，每张返回后立刻改名为 `{id}_raw.png`**
+- **棋盘格假透明**：请求 transparent 背景时，部分图会把"透明底"的棋盘纹理直接画进图里
+  （第二批 5 张里 3 张中招）。BFS 阈值降到 205 可同时吃掉棋盘两色；
+  格子口袋由二次清理（反复剥除与透明区相邻的浅色像素）兜底，脚本已固化在 `tools/portrait_process.py`
+
 ## 3. 后处理（每张必做，脚本见 §5）
 
 1. **合成白底**：生成图声称透明但实际是白底/浅灰底（每张深浅不同，焰尾狐纯白、潮汐龟 225,223,221）
@@ -83,7 +91,14 @@ alpha_composite 到白底 → RGB 判定 is_bg(r,g,b ≥ 210)
 | beast_001 | 焰尾狐 | fire | ✅ |
 | beast_002 | 潮汐龟 | water | ✅ |
 | beast_003 | 木灵鹿 | wood | ✅ |
-| beast_004~008 | 藤蔓熊/熔岩獠牙/光羽鹭/影爪猫/圣辉幼兽 | wood/fire/light/dark/light | ⬜ |
+| beast_004 | 藤蔓熊 | wood | ✅（棋盘格底，二次清理通过） |
+| beast_005 | 熔岩獠牙 | fire | ✅ |
+| beast_006 | 光羽鹭 | light | ✅（棋盘格底，二次清理通过） |
+| beast_007 | 影爪猫 | dark | ✅ |
+| beast_008 | 圣辉幼兽 | light | ✅（棋盘格底，二次清理通过） |
+
+全部 8 只幻兽已完成并接入战斗/编组界面；秘术卡（spell_001/002）无立绘，UI 走属性色占位块。
+后续新增幻兽时：串行生成 → 立刻改名 → `python tools/portrait_process.py`（把新 id 加进列表）→ `godot --headless --import`。
 
 ## 7. 风格一致性验收（每生成 5 张看一次）
 

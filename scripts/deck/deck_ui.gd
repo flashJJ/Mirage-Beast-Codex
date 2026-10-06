@@ -113,9 +113,23 @@ func _card_widget(cid: String) -> Control:
 	sb.set_corner_radius_all(6)
 	p.add_theme_stylebox_override("panel", sb)
 
+	# 横向布局：左立绘（秘术卡没有立绘则自动跳过），右文字
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 6)
+	p.add_child(h)
+	var tex := _portrait_texture(cid)
+	if tex != null:
+		var tr := TextureRect.new()
+		tr.texture = tex
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.custom_minimum_size = Vector2(52, 0)
+		h.add_child(tr)
+
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 3)
-	p.add_child(v)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(v)
 
 	v.add_child(_label(String(card.get("name", cid)), 15))
 	var kind := "幻兽" if String(card.get("type", "beast")) == "beast" else "秘术"
@@ -236,6 +250,14 @@ func _on_start() -> void:
 
 
 # ── 小工具 ────────────────────────────────────────
+
+## 取立绘贴图；没有则返回 null（与战斗界面同一命名约定）
+func _portrait_texture(card_id: String) -> Texture2D:
+	var path := "res://assets/portraits/%s.png" % card_id
+	if not ResourceLoader.exists(path):
+		return null
+	return load(path)
+
 
 func _label(text: String, size: int) -> Label:
 	var l := Label.new()
