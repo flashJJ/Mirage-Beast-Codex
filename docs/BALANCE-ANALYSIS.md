@@ -96,16 +96,29 @@ Lv7→Lv8 只带来约 8% 的属性增长，胜率却掉 49 点。
 
 **建议**：先做 S1，它是唯一从根上降低敏感度的方案；S2/S3 是补丁。
 
-### 🟡 P2 · 控制类技能强度异常
+### 🟡 P2 · 控制类技能强度异常 —— **规则缺口已修（F42）**
 
 候选 E 把影爪猫换成**藤蔓熊**后胜率掉到 46.0%，而藤蔓熊的面板（atk 14）并不比影爪猫（atk 14）高。
 差距来自「藤蔓嘲讽」：`TAUNT` 全场 + `DEBUFF atk ×0.85` 全场，每回合可重复施加。
 
 ⚠️ **同时发现一个规则缺口**：`EffectSystem.pick_targets()` **完全没有处理嘲讽**——
 `taunted_by` / `taunt_turns` 写进了单位字典，但选目标时没人读它。
-也就是说嘲讽目前**只在数值上生效（DEBUFF 部分），控制效果（强制选目标）是失效的**。
-这既解释了 E 的强度来源（纯 DEBUFF 叠加），也说明 F6（AI 难度）之前必须先补上嘲讽的目标约束，
-否则后续所有带嘲讽的卡都是"半成品"。
+也就是说嘲讽当时**只在数值上生效（DEBUFF 部分），控制效果（强制选目标）是失效的**。
+这既解释了 E 的强度来源（纯 DEBUFF 叠加），也意味着带嘲讽的卡全是"半成品"。
+
+**已修复（F42）**：新增 `EffectSystem.taunt_source()` + `ATTACK_OPS` 白名单。
+
+| 规则 | 说明 |
+|---|---|
+| 受约束的原语 | `DAMAGE` / `DEBUFF` / `TAUNT`（"打出去"的） |
+| 不受约束的原语 | `HEAL` / `SHIELD` / `BUFF` / `PURIFY` / `DRAW` / `ENERGY` |
+| 约束失效条件 | 嘲讽者阵亡 / 嘲讽持续回合归零 / 同阵营 / 被净化 |
+
+> 关键点：**治疗类效果绝不能被嘲讽重定向**，否则会出现「被嘲讽后只能给敌人加血」的荒谬结果。
+> 普攻（`TurnMachine.basic_attack`）同样走这条约束，否则只有被动技能的单位不受嘲讽影响。
+
+修复后重跑全部套件：规则单测 44 项、UI 冒烟 38 项、平衡基线与遭遇战胜率均无回归。
+**注意**：候选 E（藤蔓熊）的 46.0% 是在嘲讽失效状态下测的，修复后需重测。
 
 ### 🟡 P3 · 超时判定占比 17.3%
 
@@ -137,7 +150,9 @@ Lv7→Lv8 只带来约 8% 的属性增长，胜率却掉 49 点。
 |---|---|
 | `tests/balance.gd` | **新增**：阵容平衡度量工具（默认对局 + 等级扫描 + 候选对比 + 结束方式分布） |
 | `tests/test_ui.gd` | **新增**：UI 冒烟测试，28 项断言（实例化 / 出牌 / 单位行动 / 结束回合 / 自动推进 / 再来一局） |
-| `scripts/battle/battle_ui.gd` | 修 B6/B7；`ENEMY_TEAM` 改为候选 B；新增 `_auto_target(skill, caster)` / `_first_usable_skill()` / `_on_unit_action()` |
+| `scripts/battle/battle_ui.gd` | 修 B6/B7；`ENEMY_TEAM` 改为候选 B；新增 `_auto_target(skill, caster)` / `_first_usable_skill()` / `_on_unit_action()`；**新增手动目标选择（F5）** |
+| `scripts/battle/effect_system.gd` | 新增 `taunt_source()` 与 `ATTACK_OPS`，嘲讽真正约束目标选择 |
+| `scripts/battle/turn_machine.gd` | `basic_attack` 也走嘲讽约束 |
 
 > ⚠️ `add_child()` 之后 `_ready()` **要到下一帧才触发**。headless 测试里如果立刻读 `state` 会拿到 `null`。
 > `test_ui.gd` 的断言因此放在 `_process()` 的第 2 帧执行。这个坑值得记住。

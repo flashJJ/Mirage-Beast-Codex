@@ -10,6 +10,10 @@ extends RefCounted
 const C = preload("res://scripts/utils/constants.gd")
 const DamageCalc = preload("res://scripts/battle/damage_calc.gd")
 
+## 受嘲讽约束的效果原语：这些是"打出去"的，必须指向嘲讽者
+## 治疗/护盾/净化等"对自己人"的原语不受嘲讽影响，否则会出现「被嘲讽后只能给敌人加血」的荒谬结果
+const ATTACK_OPS := ["DAMAGE", "DEBUFF", "TAUNT"]
+
 
 # ── 对外主入口 ────────────────────────────────────
 
@@ -27,11 +31,35 @@ static func resolve(state: BattleState, caster_index: int, skill: Dictionary, ma
 	if targets.is_empty():
 		return
 
+	var taunt_target := taunt_source(state, caster_index)
+
 	for e in effects:
 		var eff: Dictionary = e
 		var op := String(eff.get("op", ""))
-		for t in targets:
+		var use_targets: Array = ([taunt_target] if (taunt_target >= 0 and ATTACK_OPS.has(op)) else targets)
+		for t in use_targets:
 			_apply_one(state, caster_index, int(t), eff, op)
+
+
+# ── 嘲讽约束 ──────────────────────────────────────
+
+## 返回「本回合该单位必须攻击的对象」索引；无嘲讽约束返回 -1。
+## 约束成立条件：嘲讽者存活、且与施法者不同阵营、且嘲讽仍在持续回合内。
+static func taunt_source(state: BattleState, caster_index: int) -> int:
+	if caster_index < 0 or caster_index >= state.units.size():
+		return -1
+	var caster: Dictionary = state.units[caster_index]
+	var by: int = int(caster.get("taunted_by", -1))
+	if by < 0 or by >= state.units.size():
+		return -1
+	if int(caster.get("taunt_turns", 0)) <= 0:
+		return -1
+	var taunter: Dictionary = state.units[by]
+	if not bool(taunter.get("alive", false)):
+		return -1
+	if int(taunter.get("side", -1)) == int(caster.get("side", -1)):
+		return -1
+	return by
 
 
 # ── 目标选择 ──────────────────────────────────────

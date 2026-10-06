@@ -70,17 +70,60 @@ func _run() -> void:
 	_check("手牌按钮已生成", (_ui._hand_box as HBoxContainer).get_child_count() >= C.START_HAND)
 	_check("顶部信息条已刷新", String(_ui._info.text).length() > 0)
 
-	# ── 出牌：点击第 0 张手牌 ──────────────────────
+	# ── 出牌：点击手牌 → 选目标（F5 手动目标选择）──
 	var before_hand: int = (state.hands[0] as Array).size()
 	var before_units: int = state.units.size()
 	_ui._on_play_card(0)
+	if not (_ui._pending as Dictionary).is_empty():
+		_check("点手牌后进入「选目标」状态", true)
+		_check("提示条已显示目标阵营", String(_ui._hint.text).length() > 0)
+		_check("取消按钮已显示", (_ui._cancel_btn as Button).visible)
+		_ui._confirm_target(_ui._suggested_target())
+	else:
+		_check("召唤类卡牌不需要目标，直接打出", true)
 	var played: bool = ((state.hands[0] as Array).size() == before_hand - 1) or (state.units.size() == before_units + 1)
-	_check("点击手牌后手牌减少或召唤上场", played)
+	_check("出牌后手牌减少或召唤上场", played)
+	_check("出牌后「选目标」状态已清空", (_ui._pending as Dictionary).is_empty())
+
+	# ── 秘术卡必须走「选目标」（不依赖手牌顺序的确定性用例）──
+	# 起手 4 张不一定有秘术卡，没有就补一张：本用例测的是选目标流程，不是洗牌
+	state.energy[BattleState.Side.ALLY] = C.MAX_ENERGY  # 排除费用不足的干扰
+	var hand_now: Array = state.hands[0]
+	var spell_idx := -1
+	for i in hand_now.size():
+		var cd: Dictionary = (_ui.db.get("cards", {}) as Dictionary).get(String(hand_now[i]), {})
+		if String(cd.get("type", "")) == "spell":
+			spell_idx = int(i)
+			break
+	if spell_idx < 0:
+		hand_now.append("spell_001")
+		spell_idx = hand_now.size() - 1
+	_ui._refresh()
+
+	_ui._on_play_card(spell_idx)
+	_check("秘术卡进入「选目标」状态", not (_ui._pending as Dictionary).is_empty())
+	_check("提示条显示目标阵营", String(_ui._hint.text).length() > 0)
+	_check("取消按钮可见", (_ui._cancel_btn as Button).visible)
+
+	_ui._cancel_pending()
+	_check("取消后清空待确认状态", (_ui._pending as Dictionary).is_empty())
+	_check("取消后隐藏取消按钮", not (_ui._cancel_btn as Button).visible)
+	# 注意：hand_now 与 state.hands[0] 是同一数组引用，必须用 int 快照比较
+	var size_before: int = (state.hands[0] as Array).size()
+	_check("取消后不消耗手牌", (state.hands[0] as Array).size() == size_before)
+
+	_ui._on_play_card(spell_idx)
+	_ui._confirm_target(_ui._suggested_target())
+	_check("确认目标后秘术卡已打出", (state.hands[0] as Array).size() == size_before - 1,
+		"%d → %d" % [size_before, (state.hands[0] as Array).size()])
+	_check("确认目标后状态清空", (_ui._pending as Dictionary).is_empty())
 
 	# ── 单位行动：技能或普攻 ────────────────────────
 	var log_before: int = state.battle_log.size()
 	for i in state.living_indices(BattleState.Side.ALLY):
 		_ui._on_unit_action(int(i))
+		if not (_ui._pending as Dictionary).is_empty():
+			_ui._confirm_target(_ui._suggested_target())
 	_check("单位行动后日志不减少", state.battle_log.size() >= log_before)
 	_check("我方单位行动后均已标记已行动", _all_acted(state))
 
@@ -94,8 +137,12 @@ func _run() -> void:
 	while not state.is_over() and guard < C.MAX_TURNS + 10:
 		if not (state.hands[0] as Array).is_empty():
 			_ui._on_play_card(0)
+			if not (_ui._pending as Dictionary).is_empty():
+				_ui._confirm_target(_ui._suggested_target())
 		for i in state.living_indices(BattleState.Side.ALLY):
 			_ui._on_unit_action(int(i))
+			if not (_ui._pending as Dictionary).is_empty():
+				_ui._confirm_target(_ui._suggested_target())
 		_ui._on_end_turn()
 		guard += 1
 
@@ -130,13 +177,13 @@ func _all_acted(state: BattleState) -> bool:
 
 # ── 断言工具 ──────────────────────────────────────
 
-func _check(name: String, cond: bool) -> void:
+func _check(name: String, cond: bool, detail: String = "") -> void:
 	if cond:
 		_passed += 1
 		print("  ✓ %s" % name)
 	else:
 		_failed += 1
-		print("  ✗ %s" % name)
+		print("  ✗ %s%s" % [name, ("  → " + detail) if detail != "" else ""])
 
 
 func _fail(msg: String) -> void:

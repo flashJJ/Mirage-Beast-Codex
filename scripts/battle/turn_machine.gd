@@ -260,7 +260,13 @@ func basic_attack(unit_index: int, target: int) -> bool:
 	if bool(u.get("skill_used_this_turn", false)):
 		return false
 	u["skill_used_this_turn"] = true
-	state.log_line("%s 普攻" % state.label(unit_index))
+	# 普攻同样受嘲讽约束，否则「嘲讽」对只有被动技能的单位完全无效
+	var forced := EffectSystem.taunt_source(state, unit_index)
+	if forced >= 0:
+		target = forced
+		state.log_line("%s 被嘲讽，强制攻击 %s" % [state.label(unit_index), state.label(target)])
+	else:
+		state.log_line("%s 普攻" % state.label(unit_index))
 	EffectSystem.deal_damage(state, unit_index, target, C.BASIC_ATTACK_POWER, 0)
 	return true
 

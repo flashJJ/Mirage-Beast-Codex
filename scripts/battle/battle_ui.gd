@@ -5,10 +5,14 @@
 ##  - UI 只做「显示 + 转发输入」，所有规则仍在 TurnMachine / BattleState 中
 ##  - 无中文方块字风险：统一使用 SystemFont（系统默认字体含 CJK）
 ##
-## 交互：
-##  - 点击手牌 → 打出该卡（自动选敌方血量最低者为目标）
-##  - 点击我方单位 → 使用其主动技能
+## 交互（F5 手动目标选择）：
+##  - 点击手牌 → 若需要目标则进入「选目标」状态，再点一个单位确认；不需要目标（召唤）直接打出
+##  - 点击我方单位的技能按钮 → 同样进入「选目标」状态
+##  - 「选目标」状态下合法目标会出现「选为目标」按钮；可随时点「取消」退出
 ##  - 点击「结束回合」→ 敌方行动并进入下一回合
+##
+## 为什么必须手动选目标：自动选目标把玩家的决策权全拿走了，
+## 「打谁」是卡牌对战最核心的决策点，交给程序就等于没有玩法。
 
 extends Control
 
@@ -34,6 +38,13 @@ var _info: Label
 var _end_btn: Button
 var _over_panel: PanelContainer
 var _over_label: Label
+var _hint: Label
+var _cancel_btn: Button
+
+## 待确认目标的行动。空字典 = 当前不在「选目标」状态。
+## {"kind": "card"/"skill"/"basic", "index": int, "skill": Dictionary,
+##  "skill_id": String, "side": int, "title": String}
+var _pending: Dictionary = {}
 
 # 我方初始阵容与卡组（V0 固定，后续由存档/构筑界面提供）
 const ALLY_TEAM := [
@@ -82,6 +93,19 @@ func _build_ui() -> void:
 	_end_btn.custom_minimum_size = Vector2(110, 34)
 	_end_btn.pressed.connect(_on_end_turn)
 	top.add_child(_end_btn)
+
+	# 选目标提示条
+	var hint_bar := HBoxContainer.new()
+	root.add_child(hint_bar)
+	_hint = _label("", 14)
+	_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hint_bar.add_child(_hint)
+	_cancel_btn = Button.new()
+	_cancel_btn.text = "取消"
+	_cancel_btn.custom_minimum_size = Vector2(80, 28)
+	_cancel_btn.visible = false
+	_cancel_btn.pressed.connect(_cancel_pending)
+	hint_bar.add_child(_cancel_btn)
 
 	# 敌方
 	root.add_child(_label("敌方", 15))
@@ -140,6 +164,7 @@ func _new_battle() -> void:
 	tm = TurnMachine.new()
 	tm.setup(state, "human", "easy")
 	tm.start_turn()
+	_pending = {}
 	_over_panel.visible = false
 	_refresh()
 
@@ -157,6 +182,7 @@ func _refresh() -> void:
 	_fill_units(_enemy_box, BattleState.Side.ENEMY)
 	_fill_units(_ally_box, BattleState.Side.ALLY)
 	_fill_hand()
+	_refresh_hint()
 
 	# 日志：只显示最后 12 行
 	var lines: Array = state.battle_log
@@ -223,7 +249,14 @@ func _unit_widget(idx: int, u: Dictionary, is_ally: bool) -> Control:
 	var used: bool = bool(u.get("skill_used_this_turn", false))
 	v.add_child(_label("已行动" if used else "可行动", 12))
 
-	if is_ally and alive and not used:
+	# 「选目标」状态下：合法目标出现「选为目标」按钮
+	if alive and _is_legal_target(idx):
+		var tbtn := Button.new()
+		tbtn.text = "选为目标"
+		tbtn.pressed.connect(_confirm_target.bind(idx))
+		v.add_child(tbtn)
+
+	if is_ally and alive and not used and _pending.is_empty():
 		var sk := _first_usable_skill(u)
 		var btn := Button.new()
 		btn.text = ("技能 · %s" % String(sk.get("name", "?"))) if not sk.is_empty() else "普攻"
@@ -289,6 +322,77 @@ func _first_usable_skill(u: Dictionary) -> Dictionary:
 	return {}
 
 
+## 技能需要的目标阵营；"self" 或不需要目标时返回 -1
+func _target_side(skill: Dictionary) -> int:
+	var side_key := String((skill.get("target", {}) as Dictionary).get("side", "enemy"))
+	if side_key == "self":
+		return -1
+	return BattleState.Side.ALLY if side_key == "ally" else BattleState.Side.ENEMY
+
+
+func _is_legal_target(unit_index: int) -> bool:
+	if _pending.is_empty():
+		return false
+	if int(state.units[unit_index].get("side", -1)) != int(_pending.get("side", -2)):
+		return false
+	return bool(state.units[unit_index].get("alive", false))
+
+
+func _refresh_hint() -> void:
+	if _pending.is_empty():
+		_hint.text = ""
+		_cancel_btn.visible = false
+		return
+	var who := "我方" if int(_pending.get("side", 0)) == BattleState.Side.ALLY else "敌方"
+	_hint.text = "选择目标：%s → 点击一个%s单位" % [String(_pending.get("title", "?")), who]
+	_cancel_btn.visible = true
+
+
+func _set_pending(p: Dictionary) -> void:
+	_pending = p
+	_refresh()
+	# 不需要选目标的行动（召唤 / 自身增益）直接进入执行，target 传 -1
+	if int(p.get("side", -1)) < 0:
+		_finish_pending(-1)
+
+
+func _cancel_pending() -> void:
+	_pending = {}
+	_refresh()
+
+
+func _confirm_target(target_index: int) -> void:
+	_finish_pending(target_index)
+
+
+func _finish_pending(target_index: int) -> void:
+	if _pending.is_empty():
+		return
+	var kind := String(_pending.get("kind", ""))
+	var idx := int(_pending.get("index", -1))
+	var sid := String(_pending.get("skill_id", ""))
+	_pending = {}
+	match kind:
+		"card":
+			tm.play_card(BattleState.Side.ALLY, idx, target_index)
+		"skill":
+			tm.use_skill(idx, sid, target_index)
+		"basic":
+			tm.basic_attack(idx, target_index)
+		_:
+			pass
+	_refresh()
+
+
+## 「选目标」状态下建议的默认目标（给测试与未来的「自动」按钮用）
+func _suggested_target() -> int:
+	if _pending.is_empty():
+		return -1
+	var sk: Dictionary = _pending.get("skill", {})
+	var caster := int(_pending.get("index", -1)) if String(_pending.get("kind", "")) != "card" else -1
+	return _auto_target(sk, caster)
+
+
 func _on_play_card(hand_index: int) -> void:
 	if state == null or state.is_over():
 		return
@@ -297,15 +401,22 @@ func _on_play_card(hand_index: int) -> void:
 		return
 	var card: Dictionary = db.get("cards", {}).get(String(hand[hand_index]), {})
 	var sk := {}
+	var skid0 := ""
 	for skid in (card.get("skills", []) as Array):
 		if state.skills_db.has(skid):
 			sk = state.skills_db[skid]
+			skid0 = String(skid)
 			break
-	tm.play_card(BattleState.Side.ALLY, hand_index, _auto_target(sk, -1))
-	_refresh()
+	# 召唤幻兽不需要目标，直接打出
+	var side := -1 if String(card.get("type", "beast")) == "beast" else _target_side(sk)
+	_set_pending({
+		"kind": "card", "index": hand_index, "skill": sk, "skill_id": skid0, "side": side,
+		"title": String(card.get("name", "?")),
+	})
 
 
-## 单位行动：优先用主动技能，没有可用技能则普攻
+## 单位行动：优先用主动技能，没有可用技能则普攻。
+## 需要目标的行动先进「选目标」状态，由玩家点单位确认。
 func _on_unit_action(unit_index: int) -> void:
 	if state == null or state.is_over():
 		return
@@ -320,17 +431,24 @@ func _on_unit_action(unit_index: int) -> void:
 			continue
 		if int(sk.get("cost", 0)) > int(state.energy[BattleState.Side.ALLY]):
 			continue
-		if tm.use_skill(unit_index, String(skid), _auto_target(sk, unit_index)):
-			_refresh()
-			return
+		_set_pending({
+			"kind": "skill", "index": unit_index, "skill": sk, "skill_id": String(skid),
+			"side": _target_side(sk),
+			"title": String(sk.get("name", "?")),
+		})
+		return
 	# 只有进场/被动技能的单位也要有输出手段，否则等于站桩挨打
-	tm.basic_attack(unit_index, _lowest_enemy())
-	_refresh()
+	_set_pending({
+		"kind": "basic", "index": unit_index, "skill": {}, "skill_id": "",
+		"side": BattleState.Side.ENEMY,
+		"title": "普攻",
+	})
 
 
 func _on_end_turn() -> void:
 	if state == null or state.is_over():
 		return
+	_pending = {}
 	tm.advance_turn()
 	_refresh()
 

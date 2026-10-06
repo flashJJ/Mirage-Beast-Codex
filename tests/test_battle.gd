@@ -36,6 +36,7 @@ func _init() -> void:
 	test_shield_absorbs_first()
 	test_death_sets_alive_false()
 	test_taunt_sets_target()
+	test_taunt_constrains_target()
 	test_counter_triggers_on_damaged()
 	test_purify_clears_buffs()
 	test_deck_legality()
@@ -145,6 +146,71 @@ func test_taunt_sets_target() -> void:
 		_check("嘲讽后敌方 taunted_by 指向施法者",
 			int(enemy_unit.get("taunted_by", -1)) == 0,
 			"taunted_by=%d" % int(enemy_unit.get("taunted_by", -1)))
+
+
+func test_taunt_constrains_target() -> void:
+	print("\n[嘲讽约束 F42]")
+	# 历史缺口：taunted_by 写进了单位字典，但选目标时没人读它 —— 嘲讽的"控制"效果其实失效了，
+	# 只有 DEBUFF 那部分数值在起作用。这里锁死约束行为。
+
+	# ── 1) 伤害类效果被强制指向嘲讽者 ──────────────
+	# 我方：藤蔓熊 Lv5（嘲讽者，血厚）+ 焰尾狐 Lv5（血薄，正常情况下会被优先攻击）
+	# 敌方：焰尾狐 Lv5（双尾连击，target.select = lowest_hp）
+	var st := _make_state(
+		[{"card_id": "beast_004", "level": 5}, {"card_id": "beast_001", "level": 5}],
+		[{"card_id": "beast_001", "level": 5}], 77)
+	var TAUNTER := 0
+	var SOFT := 1
+	var ENEMY := 2
+	_check("前提：不嘲讽时敌方会打血量更低的焰尾狐",
+		int(st.units[SOFT].get("hp", 0)) < int(st.units[TAUNTER].get("hp", 0)))
+
+	EffectSystem.resolve(st, TAUNTER, st.skills_db["sk_b004_s1"], -1)
+	_check("嘲讽已生效（taunt_source 指向嘲讽者）", EffectSystem.taunt_source(st, ENEMY) == TAUNTER)
+
+	var t_hp: int = int(st.units[TAUNTER].get("hp", 0))
+	var s_hp: int = int(st.units[SOFT].get("hp", 0))
+	EffectSystem.resolve(st, ENEMY, st.skills_db["sk_b001_s1"], -1)
+	_check("嘲讽生效：伤害强制打在嘲讽者身上", int(st.units[TAUNTER].get("hp", 0)) < t_hp,
+		"%d → %d" % [t_hp, int(st.units[TAUNTER].get("hp", 0))])
+	_check("嘲讽生效：软目标未被波及", int(st.units[SOFT].get("hp", 0)) == s_hp)
+
+	# ── 2) 嘲讽不影响治疗（否则会出现「被嘲讽只能给敌人加血」）──
+	var st2 := _make_state([{"card_id": "beast_003", "level": 5}],
+		[{"card_id": "beast_004", "level": 5}, {"card_id": "beast_001", "level": 5}], 78)
+	st2.apply_damage(0, 50, -1)
+	var h0: int = int(st2.units[0].get("hp", 0))
+	EffectSystem.resolve(st2, 1, st2.skills_db["sk_b004_s1"], -1)  # 敌方藤蔓熊嘲讽我方木灵鹿
+	_check("我方处于被嘲讽状态", EffectSystem.taunt_source(st2, 0) == 1)
+	# 注意：不能用「敌方 HP == max_hp」判断 —— _make_state 传空牌库，setup 抽牌会触发疲劳伤害
+	var e_hp: int = int(st2.units[1].get("hp", 0))
+	EffectSystem.resolve(st2, 0, st2.skills_db["sk_b003_s1"], -1)  # 木灵回春，target.side = ally
+	_check("嘲讽不影响治疗：我方回血", int(st2.units[0].get("hp", 0)) > h0)
+	_check("嘲讽不影响治疗：敌方没有回血", int(st2.units[1].get("hp", 0)) <= e_hp)
+
+	# ── 3) 普攻同样受嘲讽约束 ──────────────────────
+	var st3 := _make_state(
+		[{"card_id": "beast_004", "level": 5}, {"card_id": "beast_001", "level": 5}],
+		[{"card_id": "beast_001", "level": 5}], 79)
+	EffectSystem.resolve(st3, 0, st3.skills_db["sk_b004_s1"], -1)
+	var tm3 := TurnMachine.new()
+	tm3.setup(st3, "easy", "easy")
+	var before3: int = int(st3.units[0].get("hp", 0))
+	var soft3: int = int(st3.units[1].get("hp", 0))
+	tm3.basic_attack(2, 1)  # 敌方本想打 index 1，应被强制改打嘲讽者 index 0
+	_check("普攻受嘲讽约束：打向嘲讽者", int(st3.units[0].get("hp", 0)) < before3)
+	_check("普攻受嘲讽约束：非嘲讽者未掉血", int(st3.units[1].get("hp", 0)) == soft3)
+
+	# ── 4) 嘲讽持续回合结束失效 ────────────────────
+	var st4 := _make_state(
+		[{"card_id": "beast_004", "level": 5}, {"card_id": "beast_001", "level": 5}],
+		[{"card_id": "beast_001", "level": 5}], 80)
+	EffectSystem.resolve(st4, 0, st4.skills_db["sk_b004_s1"], -1)
+	st4.units[2]["taunt_turns"] = 0
+	_check("嘲讽回合归零后约束解除", EffectSystem.taunt_source(st4, 2) == -1)
+	st4.units[0]["alive"] = false
+	st4.units[2]["taunt_turns"] = 2
+	_check("嘲讽者阵亡后约束解除", EffectSystem.taunt_source(st4, 2) == -1)
 
 
 func test_counter_triggers_on_damaged() -> void:
