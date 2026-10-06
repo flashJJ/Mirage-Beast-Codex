@@ -5,34 +5,41 @@
 
 ---
 
-## 当前状态：V0 · 战斗核心骨架
+## 当前状态：V0 · 可玩（编组 → 战斗 → 结算）
 
 | 模块 | 状态 |
 |---|---|
 | 配置管线（JSON → 校验 → 索引） | ✅ 完成 |
-| 战斗核心（状态机 / 伤害 / 效果系统 / AI） | ✅ 完成（无 UI，控制台验证） |
-| 批量模拟（确定性 + 胜率） | ✅ 完成 |
-| 战斗 UI | ⬜ M2 |
+| 战斗核心（状态机 / 伤害 / 效果系统 / AI） | ✅ 完成 |
+| **卡组构筑界面**（16 张 / 同名 ≤2 / 首发阵容推导） | ✅ 完成 |
+| **战斗 UI**（手牌 / 站位 / 血条 / 手动选目标 / 战报 / 战绩） | ✅ 完成 |
+| 批量模拟 + 平衡度量 | ✅ 完成 |
 | 世界探索 / 契约 / 图鉴 | ⬜ M3 |
 | 美术资产 | ⬜ M4 |
 | AI 增强模块（本地大模型） | ⬜ M2.5（可选） |
+
+**游戏流程**：启动 → 编组界面（选 16 张）→ 战斗（点卡 → 选目标 → 点单位；点单位用技能/普攻；结束回合）→ 结算 → 再来一局 / 返回编组。
 
 ---
 
 ## 快速开始
 
 ```bash
-# 1) 用 Godot 4.3 打开本目录（导入项目）
+# 1) 用 Godot 4.3 打开本目录（导入项目）；直接按 F5 运行即可进入编组界面
 
-# 2) 运行一次演示战斗（控制台输出完整战斗日志）
-godot --headless --path . res://scenes/main.tscn
-# 或直接按 F5 运行主场景
+# 2) 全部测试（规则 / 战斗 UI / 编组 UI）
+godot --headless --script res://tests/test_battle.gd   # 44 项
+godot --headless --script res://tests/test_ui.gd       # 38 项
+godot --headless --script res://tests/test_deck.gd     # 21 项
 
-# 3) 批量模拟：验证确定性 + 看胜率
+# 3) 控制台演示战斗（跑完即退出，便于 CI）
+godot --headless --path . -- --console
+
+# 4) 批量模拟：验证确定性 + 看遭遇战胜率
 godot --headless --script res://tests/simulate.gd --runs 200
 
-# 4) 看某一场的完整日志
-godot --headless --script res://tests/simulate.gd --runs 1 --verbose
+# 5) 阵容平衡度量：改了阵容/数值后必跑
+godot --headless --script res://tests/balance.gd --runs 400
 ```
 
 ---
@@ -46,9 +53,14 @@ scripts/
   battle/   战斗核心（纯逻辑，无 UI 依赖）
     ai/     出牌 AI（规则式，不用 LLM）
   data/     配置加载与 Schema 校验
-scenes/     场景
-tests/      headless 批量模拟
-docs/       设计文档链接与决策记录
+  deck/     卡组构筑界面
+  session.gd  跨场景会话状态（牌库 / 阵容 / 战绩，不用 autoload）
+scenes/
+  boot.tscn     启动路由
+  deck/         卡组构筑
+  battle/       战斗
+tests/      headless 模拟与三套冒烟/单元测试
+docs/       决策记录、待办清单、平衡分析
 assets/     美术资产（当前为空，V0 阶段不需要）
 ```
 
@@ -106,10 +118,13 @@ assets/     美术资产（当前为空，V0 阶段不需要）
 
 ## 待办（下一步）
 
-- [ ] **P1 Web 导出验证**（`design/dev/D` 最高优先，第 1 周必须完成）
+- [ ] **F1 Web 导出验证**（最高优先，但需先在 Godot 编辑器内下载导出模板）
+- [ ] F6 AI 三档难度差异化（嘲讽约束已补，阻塞解除）
+- [ ] F8 存档系统
+- [ ] F43 伤害模型改乘性减伤（见 `docs/BALANCE-ANALYSIS.md` P1，越早越便宜）
 - [ ] P7 试画 2 只幻兽并计时（校准美术产能）
-- [ ] M1-7 补战斗核心单元测试
-- [ ] M2 战斗 UI（手牌 / 3×2 站位 / 拖拽）
+
+详见 `docs/BACKLOG.md`；平衡现状见 `docs/BALANCE-ANALYSIS.md`。
 
 ---
 

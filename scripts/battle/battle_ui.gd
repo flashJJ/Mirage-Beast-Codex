@@ -20,6 +20,9 @@ const C = preload("res://scripts/utils/constants.gd")
 const DataLoader = preload("res://scripts/data/data_loader.gd")
 const BattleState = preload("res://scripts/battle/battle_state.gd")
 const TurnMachine = preload("res://scripts/battle/turn_machine.gd")
+const Session = preload("res://scripts/session.gd")
+
+const DECK_SCENE := "res://scenes/deck/DeckScene.tscn"
 
 const ALLY_COLOR  := Color(0.06, 0.20, 0.38)
 const ENEMY_COLOR := Color(0.38, 0.10, 0.15)
@@ -45,31 +48,16 @@ var _cancel_btn: Button
 ## {"kind": "card"/"skill"/"basic", "index": int, "skill": Dictionary,
 ##  "skill_id": String, "side": int, "title": String}
 var _pending: Dictionary = {}
+## 本局战绩是否已计入 Session（_refresh 会被多次调用，只能记一次）
+var _recorded := false
 
-# 我方初始阵容与卡组（V0 固定，后续由存档/构筑界面提供）
-const ALLY_TEAM := [
-	{"card_id": "beast_001", "level": 8},
-	{"card_id": "beast_002", "level": 8},
-	{"card_id": "beast_003", "level": 8},
-]
-## 对手阵容由 tests/balance.gd 实测选定（候选 B，AI 对 AI 胜率 84.3%）
-## 改动这里必须重跑：godot --headless --script res://tests/balance.gd
-const ENEMY_TEAM := [
-	{"card_id": "beast_005", "level": 8},
-	{"card_id": "beast_007", "level": 8},
-	{"card_id": "beast_001", "level": 7},
-]
-const LIBRARY := [
-	"beast_001", "beast_002", "beast_003", "beast_004",
-	"beast_005", "beast_006", "beast_007", "spell_001",
-	"spell_002", "beast_001", "beast_002", "beast_003",
-	"beast_004", "beast_005", "beast_007", "spell_001",
-]
+## 阵容与牌库来自 Session（由编组界面写入，默认见 scripts/session.gd）
 
 
 func _ready() -> void:
 	_font = SystemFont.new()
 	db = DataLoader.load_all()
+	Session.ensure()
 	_build_ui()
 	_new_battle()
 
@@ -148,23 +136,29 @@ func _build_ui() -> void:
 	again.text = "再来一局"
 	again.pressed.connect(_new_battle)
 	ov.add_child(again)
+	var back := Button.new()
+	back.text = "返回编组"
+	back.pressed.connect(func(): get_tree().change_scene_to_file(DECK_SCENE))
+	ov.add_child(back)
 
 
 # ── 战斗流程 ──────────────────────────────────────
 
 func _new_battle() -> void:
+	Session.ensure()
 	state = BattleState.new()
 	state.setup(
-		ALLY_TEAM.duplicate(true), ENEMY_TEAM.duplicate(true),
+		Session.ally_team.duplicate(true), Session.enemy_team.duplicate(true),
 		randi(),
 		db.get("element_chart", {}),
 		db.get("cards", {}), db.get("skills", {}),
-		LIBRARY.duplicate(), LIBRARY.duplicate(),
+		Session.library.duplicate(), Session.library.duplicate(),
 	)
 	tm = TurnMachine.new()
 	tm.setup(state, "human", "easy")
 	tm.start_turn()
 	_pending = {}
+	_recorded = false
 	_over_panel.visible = false
 	_refresh()
 
@@ -193,9 +187,13 @@ func _refresh() -> void:
 	_log.text = out
 
 	if state.is_over():
+		if not _recorded:
+			Session.record(state.outcome)
+			_recorded = true
 		_end_btn.disabled = true
 		var txt := "胜利！" if state.outcome == "ally_win" else ("失败…" if state.outcome == "enemy_win" else "平局")
-		_over_label.text = "%s\n共 %d 回合" % [txt, state.turn_index]
+		_over_label.text = "%s\n共 %d 回合\n战绩 %d 胜 %d 负 %d 平" % [
+			txt, state.turn_index, Session.wins, Session.losses, Session.draws]
 		_over_panel.visible = true
 	else:
 		_end_btn.disabled = false

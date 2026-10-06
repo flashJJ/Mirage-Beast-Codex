@@ -87,6 +87,13 @@
 `taunted_by` 一直被写进单位字典，但 `pick_targets()` 从不读它 —— 嘲讽的**控制效果是失效的**，
 只有 DEBUFF 那部分数值在起作用。补上约束，并用 `ATTACK_OPS` 白名单把治疗类效果排除在外。
 
+### F7 · 卡组构筑与场景串联（2026-10-06 补记）
+
+新增 `scripts/session.gd`（static 变量，不用 autoload）+ `scenes/deck/DeckScene.tscn` + `scenes/boot.tscn`。
+流程闭环：启动 → 编组（选 16 张）→ 战斗 → 结算 → 再来一局 / 返回编组。
+
+首发阵容规则：**取牌库中前 3 张互不相同的幻兽卡**（写在 `Session.team_from_library`，规则可预期）。
+
 ### F5 · 手动目标选择（2026-10-06 补记）
 
 原实现自动选目标（敌方血量最低）。**这等于把玩家唯一的决策点拿走了** ——
@@ -99,6 +106,12 @@
 
 > GDScript 的 `Array` 是**共享引用**：`var a = state.hands[0]` 后 `a.append(x)` 会直接改到 state 里。
 > 测试里比较「操作前后数量」必须先取 `int` 快照，否则前后比较的是同一个数组，断言恒假。
+
+> `SceneTree.change_scene_to_file()` **不能在 `_ready()` 里直接调用**，会报
+> `Parent node is busy adding/removing children`。必须用 `call_deferred`。
+
+> Python `io.open(p, 'w')` 在 Windows 会把 `\n` 转成 `\r\n`。
+> 写 GDScript 时用 `newline=''`，否则会污染 `.gitattributes` 声明的 LF 行尾。
 
 ---
 

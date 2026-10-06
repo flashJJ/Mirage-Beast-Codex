@@ -26,8 +26,9 @@
 
 | 套件 | 命令 | 项数 | 状态 |
 |---|---|---|---|
-| 规则单元测试 | `godot --headless --script res://tests/test_battle.gd` | 33 | ✅ 全过 |
-| UI 冒烟测试 | `godot --headless --script res://tests/test_ui.gd` | 28 | ✅ 全过 |
+| 规则单元测试 | `godot --headless --script res://tests/test_battle.gd` | 44 | ✅ 全过 |
+| 战斗 UI 冒烟测试 | `godot --headless --script res://tests/test_ui.gd` | 38 | ✅ 全过 |
+| 编组 UI 冒烟测试 | `godot --headless --script res://tests/test_deck.gd` | 21 | ✅ 全过 |
 | 遭遇战胜率模拟 | `godot --headless --script res://tests/simulate.gd --runs 200` | — | ✅ |
 | 阵容平衡度量 | `godot --headless --script res://tests/balance.gd --runs 400` | — | ✅ |
 
@@ -53,6 +54,9 @@
 - `tests/balance.gd` 阵容平衡度量（胜率 / 结束方式分布 / 等级扫描 / 候选对比）
 - 修复 **B6**（治疗/护盾打错阵营）+ **B7**（无主动技能单位无法行动）两个 UI 层 bug
 - `docs/BALANCE-ANALYSIS.md` 首份量化平衡报告
+- **F7（部分）** 卡组构筑界面：16 张 / 同名 ≤2 / 随机填充 / 首发阵容推导 / 战绩统计
+- `scripts/session.gd` 跨场景会话状态（不用 autoload，理由同 D2）
+- `scenes/boot.tscn` 启动路由：编组 → 战斗 → 返回编组 闭环
 
 ---
 
@@ -74,7 +78,7 @@
 | ~~F42~~ | ~~嘲讽的目标约束~~ | ~~4 h~~ | ✅ **已完成**：`EffectSystem.taunt_source()` + `ATTACK_OPS` 白名单，11 项断言 |
 | F5 | ~~手动目标选择~~ ✅ + 拖拽出牌 ⬜ | 12 h | F4.**手动选目标已完成**（点卡→选目标→点单位确认，可取消）；拖拽为锦上添花 |
 | F6 | AI 三档难度差异化（当前 easy/normal 差异不足） | 18 h | — |
-| F7 | 卡组构筑界面 + 牌库合法性校验（`schema_check.validate_deck`） | 12 h | F4 |
+| ~~F7~~ | ~~卡组构筑界面 + 牌库合法性校验~~ | ~~12 h~~ | ✅ **已完成**（21 项断言）；后续补「保存多套卡组」属 F8 存档范畴 |
 | F8 | 存档系统（`user://save_slot_1.json`，含 migrate） | 10 h | — |
 | F9 | Web 导出调优 + itch.io 页面 + GitHub README 完善 | 9 h | F1 |
 

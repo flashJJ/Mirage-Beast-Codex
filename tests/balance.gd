@@ -22,7 +22,7 @@ const C = preload("res://scripts/utils/constants.gd")
 const DataLoader = preload("res://scripts/data/data_loader.gd")
 const BattleState = preload("res://scripts/battle/battle_state.gd")
 const TurnMachine = preload("res://scripts/battle/turn_machine.gd")
-const BattleUI = preload("res://scripts/battle/battle_ui.gd")
+const Session = preload("res://scripts/session.gd")
 
 ## 目标胜率区间：作为玩家的第一场战斗，应该「能赢但要动点脑子」
 const TARGET_LOW := 60
@@ -39,23 +39,24 @@ func _init() -> void:
 			_runs = int(args[i + 1])
 
 	_db = DataLoader.load_all()
+	Session.ensure()
 	print("=== 阵容平衡度量（每组 %d 局）===\n" % _runs)
 
-	_report("UI 默认阵容", BattleUI.ALLY_TEAM, BattleUI.ENEMY_TEAM)
+	_report("当前对局配置", Session.ally_team, Session.enemy_team)
 
 	# 敌方等级扫描：找出让胜率落入目标区间的等级
-	print("\n── 敌方等级扫描（我方固定 Lv%d）──" % int(BattleUI.ALLY_TEAM[0]["level"]))
+	print("\n── 敌方等级扫描（我方固定 Lv%d）──" % int((Session.ally_team[0] as Dictionary)["level"]))
 	print("  敌方等级   我方胜率   平均回合   判定")
 	for lv in range(4, 11):
 		var enemy: Array = []
-		for e in BattleUI.ENEMY_TEAM:
-			enemy.append({"card_id": e["card_id"], "level": lv})
-		var r := _measure(BattleUI.ALLY_TEAM, enemy)
+		for e in Session.enemy_team:
+			enemy.append({"card_id": (e as Dictionary)["card_id"], "level": lv})
+		var r := _measure(Session.ally_team, enemy)
 		var verdict := "OK" if r.win >= TARGET_LOW and r.win <= TARGET_HIGH else ("偏易" if r.win > TARGET_HIGH else "偏难")
 		print("    Lv%-2d      %5.1f%%    %5.1f      %s" % [lv, r.win, r.turns, verdict])
 
 	# 候选对手配置对比：把「敌方等级」从粗粒度扫描收窄到具体阵容
-	print("\n── 候选对手配置对比（我方固定为 UI 默认阵容）──")
+	print("\n── 候选对手配置对比（我方固定为 Session 当前阵容）──")
 	print("  配置                                我方胜率   平均回合   判定")
 	var candidates := [
 		{"name": "A 旧默认（影爪猫Lv7）", "e": [["beast_005", 8], ["beast_007", 7], ["beast_001", 7]]},
@@ -69,7 +70,7 @@ func _init() -> void:
 		var enemy: Array = []
 		for p in (c["e"] as Array):
 			enemy.append({"card_id": p[0], "level": p[1]})
-		var r := _measure(BattleUI.ALLY_TEAM, enemy)
+		var r := _measure(Session.ally_team, enemy)
 		var verdict := "OK" if r.win >= TARGET_LOW and r.win <= TARGET_HIGH else ("偏易" if r.win > TARGET_HIGH else "偏难")
 		print("  %-36s %5.1f%%   %5.1f      %s" % [c["name"], r.win, r.turns, verdict])
 
@@ -102,7 +103,7 @@ func _measure(ally: Array, enemy: Array) -> Dictionary:
 			1000 + i,
 			_db.get("element_chart", {}),
 			_db.get("cards", {}), _db.get("skills", {}),
-			BattleUI.LIBRARY.duplicate(), BattleUI.LIBRARY.duplicate(),
+			Session.library.duplicate(), Session.library.duplicate(),
 		)
 		var tm := TurnMachine.new()
 		tm.setup(st, "easy", "easy")

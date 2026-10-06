@@ -10,13 +10,13 @@ const BattleState = preload("res://scripts/battle/battle_state.gd")
 const TurnMachine = preload("res://scripts/battle/turn_machine.gd")
 const DamageCalc = preload("res://scripts/battle/damage_calc.gd")
 
-const BATTLE_SCENE := "res://scenes/battle/BattleScene.tscn"
+const DECK_SCENE := "res://scenes/deck/DeckScene.tscn"
 
 
 func _ready() -> void:
 	# 默认跑控制台演示（便于 headless 与 CI）；加 --ui 参数进入可玩的战斗界面
 	if OS.get_cmdline_user_args().has("--ui"):
-		get_tree().change_scene_to_file(BATTLE_SCENE)
+		get_tree().change_scene_to_file(DECK_SCENE)
 		return
 	_console_demo()
 	get_tree().quit()
