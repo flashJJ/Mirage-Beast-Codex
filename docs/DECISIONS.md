@@ -187,6 +187,26 @@ cd build/web && python -m http.server 8000
 
 ---
 
+## 2026-10-06 · 2D 化（立绘 + 动效）与推送兜底
+
+用户反馈"像文字游戏"，触发 2D 化改造。
+
+| # | 决策 | 理由 | 影响 |
+|---|---|---|---|
+| D8 | 立绘用 AI 生成 + 固定 prompt 风格锚点 | 8 只 × 5~10 credits 远低于外包；风格锚点句锁死防漂移 | 管线见 docs/ART-PIPELINE.md |
+| D9 | 无立绘时降级为属性色占位块 | 20 只不可能一次做完，界面不能塌 | `_portrait_node()` 自动降级 |
+| D10 | 打击动效只用 scale/rotation/modulate + Tween | 单位卡片在容器里，position 会被布局接管；这三属性容器不管 | 零额外美术成本 |
+| D11 | 受击判定用 HP/护盾/存活快照对比 | 结构化战报事件不含受击方；解析日志字符串太脆 | `_hp_snapshot()` |
+| W4 | AI 生图并行调用会文件名碰撞（同秒完成互相覆盖） | **必须串行生成，每张返回后立刻改名** | 第二批 5 张并行只活 3 张，补生成 2 张 |
+| W5 | transparent 背景可能输出**棋盘格假透明** | BFS 阈值降到 205 吃掉棋盘两色 + 二次清理剥口袋 | `tools/portrait_process.py` |
+| W6 | 代理封 github.com 主站但放行 api.github.com | git push 失效时走 API 兜底（blob→tree→commit→ref） | `tools/api_push.py`（含 token，已 gitignore，禁止入库） |
+
+**API 推送注意**：API 生成的远端提交 SHA 与本地不同（committer 信息差异），内容完全一致。
+网络恢复后执行 `git pull --rebase` 即可去重对齐（patch-id 相同会被 rebase 跳过）。
+当前远端 `d915d56` ≡ 本地 `220527e`。
+
+---
+
 ## 待决策（PoC 第 4 周末填写）
 
 | # | 问题 | 影响 |

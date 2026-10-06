@@ -26,3 +26,4 @@ desktop.ini
 .idea/
 *.swp
 *~
+tools/api_push.py
