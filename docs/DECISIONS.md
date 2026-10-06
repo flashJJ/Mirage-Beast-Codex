@@ -143,6 +143,50 @@
 
 ---
 
+## 2026-10-06 · F1 Web 导出验证（PoC 最高优先项，PASS）
+
+**结论：Web 导出可用。** 导出 → 本地 HTTP 托管 → 浏览器可运行，判定 **PASS**。
+这意味着作品集可以做成"点开就能玩"的链接，而不是只能给源码或录屏。
+
+### 产物（release，nothreads）
+
+| 文件 | 大小 |
+|---|---|
+| `index.wasm` | 33.7 MB |
+| `index.pck` | 177 KB |
+| `index.js` | 324 KB |
+| `index.html` + 图标 | ~45 KB |
+| **合计** | **约 34.2 MB** |
+
+> 未 gzip 的 wasm 就是这个量级；若托管到支持 gzip/brotli 的服务可压到约 10 MB。
+> itch.io 的上传上限是 1 GB，34 MB 完全没问题。
+
+### 关键决策：用 nothreads 模板
+
+`export_presets.cfg` 中 `variant/extensions_support = false`，Godot 会自动选用
+`web_nothreads_release.zip` 而非 `web_release.zip`。
+
+理由：**带线程的模板要求服务端返回 COOP/COEP 响应头**，而 itch.io 的 iframe
+和普通静态托管都不会给，结果就是直接白屏。V0 不需要 GDExtension，关掉最稳。
+
+### 踩到的坑
+
+| # | 问题 | 修复 |
+|---|---|---|
+| W1 | `export_presets.cfg` 里用 `#` 写注释 → `ConfigFile parse error` | Godot 的 ConfigFile 注释符是 **`;`**，不是 `#` |
+| W2 | 模板解压后多一层 `templates/` → 报"指定路径不存在导出模板" | 模板文件必须直接放在 `export_templates/4.3.stable/` 下，不能再套 `templates/` |
+| W3 | GitHub release 的 CDN 被网络策略挡住，下不动 | 改走 **API asset 端点**下载：`GET /repos/godotengine/godot/releases/assets/{id}` + `Accept: application/octet-stream` |
+
+### 本地验证方式
+
+```bash
+godot --headless --path . --export-release "Web" "build/web/index.html"
+cd build/web && python -m http.server 8000
+# 打开 http://127.0.0.1:8000
+```
+
+---
+
 ## 待决策（PoC 第 4 周末填写）
 
 | # | 问题 | 影响 |

@@ -16,6 +16,7 @@
 | 批量模拟 + 平衡度量 | ✅ 完成 |
 | 世界探索 / 契约 / 图鉴 | ⬜ M3 |
 | 美术资产 | ⬜ M4 |
+| **Web 导出** | ✅ 完成（约 34 MB，本地 HTTP 托管验证通过） |
 | AI 增强模块（本地大模型） | ⬜ M2.5（可选） |
 
 **游戏流程**：启动 → 编组界面（选 16 张）→ 战斗（点卡 → 选目标 → 点单位；点单位用技能/普攻；结束回合）→ 结算 → 再来一局 / 返回编组。
@@ -40,6 +41,10 @@ godot --headless --script res://tests/simulate.gd --runs 200
 
 # 5) 阵容平衡度量：改了阵容/数值后必跑
 godot --headless --script res://tests/balance.gd --runs 400
+
+# 6) 导出 Web 版并在本地托管验证
+godot --headless --path . --export-release "Web" "build/web/index.html"
+cd build/web && python -m http.server 8000   # 打开 http://127.0.0.1:8000
 ```
 
 ---
@@ -118,7 +123,8 @@ assets/     美术资产（当前为空，V0 阶段不需要）
 
 ## 待办（下一步）
 
-- [ ] **F1 Web 导出验证**（最高优先，但需先在 Godot 编辑器内下载导出模板）
+- [x] **F1 Web 导出验证** ✅ 已 PASS（约 34 MB，nothreads 模板）
+- [ ] 压缩 wasm（gzip/brotli 后约 10 MB）+ 上传 itch.io
 - [ ] F6 AI 三档难度差异化（嘲讽约束已补，阻塞解除）
 - [ ] F8 存档系统
 - [ ] F43 伤害模型改乘性减伤（见 `docs/BALANCE-ANALYSIS.md` P1，越早越便宜）
